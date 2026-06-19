@@ -621,8 +621,6 @@ async def settings_command(update, context):
         "❓ *Help Guide*\n"
         "Use /help to see full instructions\n\n"
         "—\n\n"
-        "⭐ *Want Premium?*\n"
-        "Contact @racksunn for unlimited searches!\n\n"
         "_Thanks for using this bot._"
     )
     await update.message.reply_text(settings_text, parse_mode="Markdown")
@@ -788,23 +786,6 @@ async def info_command(update, context):
     else:
         status = "✅ Active"
 
-    premium = is_premium_user(uid)
-    premium_expiry = get_premium_expiry(uid)
-    premium_line = "\n*Plan:* ⭐ *Premium* _(expires " + premium_expiry + ")_" if premium else "\n*Plan:* 🆓 Free"
-
-    num_count, tg_count, aadhar_count = get_daily_counts(uid)
-    veh_count = get_daily_veh_count(uid)
-    if not premium:
-        usage_line = (
-            "\n*Today's Usage:*\n"
-            "  📞 Number: `" + str(num_count) + "/" + str(FREE_NUM_LIMIT) + "`\n"
-            "  🪪 Aadhar: `" + str(aadhar_count) + "/" + str(FREE_NUM_LIMIT) + "`\n"
-            "  🚗 Vehicle: `" + str(veh_count) + "/" + str(FREE_VEH_LIMIT) + "`\n"
-            "  📱 TG Lookup: `" + str(tg_count) + "/" + str(FREE_TG_LIMIT) + "`"
-        )
-    else:
-        usage_line = "\n*Today's Usage:* `Unlimited ♾️`"
-
     text = (
         "👤 *User Info*\n\n"
         "*Name:* `" + val(first_name) + "`\n"
@@ -812,9 +793,7 @@ async def info_command(update, context):
         "*User ID:* `" + str(uid) + "`\n"
         "*Joined:* `" + val(join_date) + "`\n"
         "*Total Searches:* `" + str(search_count) + "`\n"
-        "*Status:* " + status +
-        premium_line +
-        usage_line
+        "*Status:* " + status
     )
     await update.message.reply_text(text, parse_mode="Markdown")
 
@@ -824,13 +803,11 @@ async def stats_command(update, context):
     if user_id != ADMIN_ID:
         return
     total, searches, today_joined = get_stats_db()
-    premium_count = get_premium_count_db()
     msg = (
         "📊 *Bot Stats*\n\n"
         "👥 *Total Users:* `" + str(total) + "`\n"
         "📅 *Joined Today:* `" + str(today_joined) + "`\n"
         "🔍 *Total Searches:* `" + str(searches) + "`\n"
-        "⭐ *Premium Users:* `" + str(premium_count) + "`\n"
         "🔧 *Maintenance:* `" + ("ON" if maintenance_mode else "OFF") + "`"
     )
     await update.message.reply_text(msg, parse_mode="Markdown")
@@ -843,15 +820,7 @@ async def adminhelp_command(update, context):
     text = (
         "🛡 *Admin Commands*\n\n"
         "━━━━━━━━━━━━━━━\n"
-        "⭐ *PREMIUM SYSTEM*\n"
-        "━━━━━━━━━━━━━━━\n"
-        "`/premium <uid> <days>` — Give premium\n"
-        "  Example: `/premium 123456789 30`\n\n"
-        "`/removepremium <uid>` — Remove premium\n\n"
-        "`/premiumlist` — All premium users\n\n"
-        "🆓 *Free limits:* Number=15/day | Aadhar=15/day | Vehicle=5/day | TG=10/day\n\n"
-        "━━━━━━━━━━━━━━━\n"
-        "📋 *OTHER ADMIN*\n"
+        "📋 *ADMIN*\n"
         "━━━━━━━━━━━━━━━\n"
         "`/stats` — Bot stats\n\n"
         "`/info` — User info _(reply or ID)_\n\n"
@@ -964,20 +933,6 @@ async def num_lookup(update, context):
     user_id = update.message.from_user.id
     chat_id = update.message.chat_id
 
-    if not is_premium_user(user_id) and user_id != ADMIN_ID:
-        check_and_reset_daily(user_id)
-        num_count, _, _ = get_daily_counts(user_id)
-        if num_count >= FREE_NUM_LIMIT:
-            await update.message.reply_text(
-                "🚫 *Daily Limit Reached!*\n\n"
-                "🆓 *Free users* can search *" + str(FREE_NUM_LIMIT) + " numbers/day*.\n"
-                "You have used all your searches for today.\n\n"
-                "⭐ *Upgrade to Premium* for unlimited searches!\n"
-                "Contact @racksunn to get premium.",
-                parse_mode="Markdown",
-            )
-            return
-
     number = context.args[0].replace("+", "").replace(" ", "").replace("-", "")
     searching = await update.message.reply_text("🔍 Searching...")
 
@@ -1012,24 +967,10 @@ async def num_lookup(update, context):
     await delete_msg(context, chat_id, searching.message_id)
 
     if not entries:
-        not_found_msg = "*❌ Data Not Found!*\n\nNo information found for this number."
-        if not is_premium_user(user_id) and user_id != ADMIN_ID:
-            num_count, _, _ = get_daily_counts(user_id)
-            not_found_msg += "\n\n✅ _Credit not used._"
-        await update.message.reply_text(not_found_msg, parse_mode="Markdown")
+        await update.message.reply_text("*❌ Data Not Found!*\n\nNo information found for this number.", parse_mode="Markdown")
         return
 
     increment_search(user_id)
-    if not is_premium_user(user_id) and user_id != ADMIN_ID:
-        increment_num_daily(user_id)
-        num_count, _, _ = get_daily_counts(user_id)
-        remaining = FREE_NUM_LIMIT - num_count
-        if remaining <= 3:
-            await update.message.reply_text(
-                "⚠️ *Warning:* Only *" + str(max(0, remaining)) + " free searches* left for today!\n"
-                "Upgrade to ⭐ *Premium* for unlimited searches.",
-                parse_mode="Markdown",
-            )
 
     for i, entry in enumerate(entries, 1):
         text = (
@@ -1055,20 +996,6 @@ async def aadhar_lookup(update, context):
         return
     user_id = update.message.from_user.id
     chat_id = update.message.chat_id
-
-    if not is_premium_user(user_id) and user_id != ADMIN_ID:
-        check_and_reset_daily(user_id)
-        aadhar_count = get_daily_aadhar_count(user_id)
-        if aadhar_count >= FREE_NUM_LIMIT:
-            await update.message.reply_text(
-                "🚫 *Daily Limit Reached!*\n\n"
-                "🆓 *Free users* can search *" + str(FREE_NUM_LIMIT) + " Aadhar/day*.\n"
-                "You have used all your searches for today.\n\n"
-                "⭐ *Upgrade to Premium* for unlimited searches!\n"
-                "Contact @racksunn to get premium.",
-                parse_mode="Markdown",
-            )
-            return
 
     aadhar = context.args[0].replace(" ", "").replace("-", "")
     searching = await update.message.reply_text("🔍 Searching...")
@@ -1102,24 +1029,10 @@ async def aadhar_lookup(update, context):
     await delete_msg(context, chat_id, searching.message_id)
 
     if not entries:
-        not_found_msg = "*❌ Data Not Found!*\n\nNo information found for this Aadhar."
-        if not is_premium_user(user_id) and user_id != ADMIN_ID:
-            aadhar_count = get_daily_aadhar_count(user_id)
-            not_found_msg += "\n\n✅ _Credit not used._"
-        await update.message.reply_text(not_found_msg, parse_mode="Markdown")
+        await update.message.reply_text("*❌ Data Not Found!*\n\nNo information found for this Aadhar.", parse_mode="Markdown")
         return
 
     increment_search(user_id)
-    if not is_premium_user(user_id) and user_id != ADMIN_ID:
-        increment_aadhar_daily(user_id)
-        aadhar_count = get_daily_aadhar_count(user_id)
-        remaining = FREE_NUM_LIMIT - aadhar_count
-        if remaining <= 3:
-            await update.message.reply_text(
-                "⚠️ *Warning:* Only *" + str(max(0, remaining)) + " free Aadhar searches* left for today!\n"
-                "Upgrade to ⭐ *Premium* for unlimited searches.",
-                parse_mode="Markdown",
-            )
 
     for i, entry in enumerate(entries, 1):
         text = (
@@ -1151,20 +1064,6 @@ async def veh_lookup(update, context):
     user_id = update.message.from_user.id
     chat_id = update.message.chat_id
 
-    if not is_premium_user(user_id) and user_id != ADMIN_ID:
-        check_and_reset_daily(user_id)
-        veh_count = get_daily_veh_count(user_id)
-        if veh_count >= FREE_VEH_LIMIT:
-            await update.message.reply_text(
-                "🚫 *Daily Limit Reached!*\n\n"
-                "🆓 *Free users* can search *" + str(FREE_VEH_LIMIT) + " vehicles/day*.\n"
-                "You have used all your searches for today.\n\n"
-                "⭐ *Upgrade to Premium* for unlimited searches!\n"
-                "Contact @racksunn to get premium.",
-                parse_mode="Markdown",
-            )
-            return
-
     plate = context.args[0].strip().upper().replace(" ", "")
     searching = await update.message.reply_text("🔍 Searching...")
     try:
@@ -1179,24 +1078,10 @@ async def veh_lookup(update, context):
     await delete_msg(context, chat_id, searching.message_id)
 
     if not data or (isinstance(data, dict) and not data.get("data") and not data.get("success") and not data.get("result")):
-        not_found_msg = "*❌ Data Not Found!*\n\nNo information found for this vehicle number."
-        if not is_premium_user(user_id) and user_id != ADMIN_ID:
-            veh_count = get_daily_veh_count(user_id)
-            not_found_msg += "\n\n✅ _Credit not used._"
-        await update.message.reply_text(not_found_msg, parse_mode="Markdown")
+        await update.message.reply_text("*❌ Data Not Found!*\n\nNo information found for this vehicle number.", parse_mode="Markdown")
         return
 
     increment_search(user_id)
-    if not is_premium_user(user_id) and user_id != ADMIN_ID:
-        increment_veh_daily(user_id)
-        veh_count = get_daily_veh_count(user_id)
-        remaining = FREE_VEH_LIMIT - veh_count
-        if remaining <= 1:
-            await update.message.reply_text(
-                "⚠️ *Warning:* Only *" + str(max(0, remaining)) + " free vehicle searches* left for today!\n"
-                "Upgrade to ⭐ *Premium* for unlimited searches.",
-                parse_mode="Markdown",
-            )
 
     SKIP_KEYS = {"status", "message", "msg", "error", "success", "code", "key", "developer", "attempt", "cached", "mob raw", "response code", "vnum"}
     LABEL_MAP = {
@@ -1274,19 +1159,6 @@ async def lookup(update, context):
     chat_id = update.message.chat_id
     user_input = update.message.text.strip()
 
-    if not is_premium_user(user_id) and user_id != ADMIN_ID:
-        check_and_reset_daily(user_id)
-        _, tg_count, _ = get_daily_counts(user_id)
-        if tg_count >= FREE_TG_LIMIT:
-            await update.message.reply_text(
-                "🚫 *Daily Limit Reached!*\n\n"
-                "🆓 *Free users* can do *" + str(FREE_TG_LIMIT) + " TG lookups/day*.\n"
-                "You have used all your lookups for today.\n\n"
-                "⭐ *Upgrade to Premium* for unlimited lookups!\n"
-                "Contact @racksunn to get premium.",
-                parse_mode="Markdown",
-            )
-            return
     chat_type = update.message.chat.type
     bot_username = (await context.bot.get_me()).username
 
@@ -1352,11 +1224,7 @@ async def lookup(update, context):
     await delete_msg(context, chat_id, searching.message_id)
 
     def tg_not_found_msg(uid):
-        base = "*❌ Data Not Found!*\n\nNo data linked to this Telegram account."
-        if not is_premium_user(uid) and uid != ADMIN_ID:
-            _, tg_count, _ = get_daily_counts(uid)
-            base += "\n\n✅ _Credit not used._"
-        return base
+        return "*❌ Data Not Found!*\n\nNo data linked to this Telegram account."
 
     # Check for error / not found
     if isinstance(data, dict):
@@ -1370,16 +1238,6 @@ async def lookup(update, context):
             return
 
     increment_search(user_id)
-    if not is_premium_user(user_id) and user_id != ADMIN_ID:
-        increment_tg_daily(user_id)
-        _, tg_count, _ = get_daily_counts(user_id)
-        remaining = FREE_TG_LIMIT - tg_count
-        if remaining <= 2:
-            await update.message.reply_text(
-                "⚠️ *Warning:* Only *" + str(max(0, remaining)) + " free TG lookups* left for today!\n"
-                "Upgrade to ⭐ *Premium* for unlimited lookups.",
-                parse_mode="Markdown",
-            )
 
     # Build result from whatever the API returns
     SKIP_KEYS = {"status", "message", "msg", "error", "success", "code", "key", "type", "owner", "cached", "attempt", "powered by", "time", "version", "powered_by"}
@@ -1455,201 +1313,6 @@ async def broadcast_command(update, context):
     )
 
 
-async def premium_command(update, context):
-    user_id = update.message.from_user.id
-    if user_id != ADMIN_ID:
-        return
-    args = context.args or []
-    if len(args) < 2 or not args[0].lstrip("-").isdigit() or not args[1].isdigit():
-        await update.message.reply_text(
-            "⭐ *Premium Command Usage:*\n\n"
-            "`/premium <user_id> <days>`\n\n"
-            "*Example:*\n`/premium 123456789 30`\n\n"
-            "_This gives the user premium access for 30 days._",
-            parse_mode="Markdown",
-        )
-        return
-    target_id = int(args[0])
-    days = int(args[1])
-    row = get_user_info_db(target_id)
-    if not row:
-        await update.message.reply_text(
-            "❌ *User not found in database.*\n\nUser ne pehle bot use nahi kiya.",
-            parse_mode="Markdown",
-        )
-        return
-    expiry = add_premium_db(target_id, days)
-    target_name = val(row[1]) if row else str(target_id)
-    await update.message.reply_text(
-        "⭐ *Premium Activated!*\n\n"
-        "*User:* `" + target_name + "`\n"
-        "*User ID:* `" + str(target_id) + "`\n"
-        "*Duration:* `" + str(days) + " days`\n"
-        "*Expires:* `" + expiry + "`",
-        parse_mode="Markdown",
-    )
-    try:
-        await context.bot.send_message(
-            chat_id=target_id,
-            text=(
-                "🎉 *Congratulations! You have been upgraded to Premium!*\n\n"
-                "⭐ *Plan:* Premium\n"
-                "📅 *Expires:* `" + expiry + "`\n\n"
-                "✅ You now have *unlimited searches* on this bot!\n\n"
-                "📞 Number Lookup: ♾️ Unlimited\n"
-                "📱 TG Lookup: ♾️ Unlimited\n\n"
-                "_Enjoy premium access!_"
-            ),
-            parse_mode="Markdown",
-        )
-    except Exception:
-        pass
-
-
-async def removepremium_command(update, context):
-    user_id = update.message.from_user.id
-    if user_id != ADMIN_ID:
-        return
-    args = context.args or []
-    if not args or not args[0].lstrip("-").isdigit():
-        await update.message.reply_text(
-            "*Usage:* `/removepremium <user_id>`\n\n"
-            "*Example:* `/removepremium 123456789`",
-            parse_mode="Markdown",
-        )
-        return
-    target_id = int(args[0])
-    row = get_user_info_db(target_id)
-    if not row:
-        await update.message.reply_text("❌ *User not found in database.*", parse_mode="Markdown")
-        return
-    remove_premium_db(target_id)
-    target_name = val(row[1]) if row else str(target_id)
-    await update.message.reply_text(
-        "✅ *Premium Removed!*\n\n"
-        "*User:* `" + target_name + "`\n"
-        "*User ID:* `" + str(target_id) + "`\n\n"
-        "_User is now on Free plan._",
-        parse_mode="Markdown",
-    )
-    try:
-        await context.bot.send_message(
-            chat_id=target_id,
-            text=(
-                "ℹ️ *Your Premium access has ended.*\n\n"
-                "You are now on the *Free plan*.\n\n"
-                "🆓 Free limits:\n"
-                "📞 Number Lookup: `" + str(FREE_NUM_LIMIT) + "/day`\n"
-                "🪪 Aadhar Lookup: `" + str(FREE_NUM_LIMIT) + "/day`\n"
-                "🚗 Vehicle Lookup: `" + str(FREE_VEH_LIMIT) + "/day`\n"
-                "📱 TG Lookup: `" + str(FREE_TG_LIMIT) + "/day`"
-            ),
-            parse_mode="Markdown",
-        )
-    except Exception:
-        pass
-
-
-async def premiumlist_command(update, context):
-    user_id = update.message.from_user.id
-    if user_id != ADMIN_ID:
-        return
-    rows = get_premium_list_db()
-    if not rows:
-        await update.message.reply_text("⭐ *No premium users.*", parse_mode="Markdown")
-        return
-    lines = ["⭐ *Premium Users List*\n"]
-    for i, (uid, fname, uname, expiry) in enumerate(rows, 1):
-        uname_display = "@" + uname if uname else "N/A"
-        line = (
-            str(i) + ". `" + str(uid) + "` — " + val(fname) + " (" + uname_display + ")\n"
-            "    📅 Expires: `" + (expiry or "N/A") + "`"
-        )
-        lines.append(line)
-    await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
-
-
-async def mypremium_command(update, context):
-    if not await guard(update, context):
-        return
-    user_id = update.message.from_user.id
-    premium = is_premium_user(user_id)
-    expiry = get_premium_expiry(user_id)
-    check_and_reset_daily(user_id)
-    num_count, tg_count, aadhar_count = get_daily_counts(user_id)
-
-    if premium:
-        text = (
-            "⭐ *Your Premium Status*\n\n"
-            "*Plan:* ⭐ Premium\n"
-            "*Expires:* `" + expiry + "`\n\n"
-            "*Today's Usage:* ♾️ Unlimited\n"
-            "📞 Number searches used: `" + str(num_count) + "`\n"
-            "🪪 Aadhar searches used: `" + str(aadhar_count) + "`\n"
-            "📱 TG lookups used: `" + str(tg_count) + "`"
-        )
-    else:
-        text = (
-            "🆓 *Your Plan: Free*\n\n"
-            "*Today's Usage:*\n"
-            "📞 Number: `" + str(num_count) + "/" + str(FREE_NUM_LIMIT) + "`\n"
-            "🪪 Aadhar: `" + str(aadhar_count) + "/" + str(FREE_NUM_LIMIT) + "`\n"
-            "📱 TG Lookup: `" + str(tg_count) + "/" + str(FREE_TG_LIMIT) + "`\n\n"
-            "⭐ *Upgrade to Premium* for unlimited searches!\n"
-            "Contact @racksunn to get premium."
-        )
-    await update.message.reply_text(text, parse_mode="Markdown")
-
-
-async def myplan_command(update, context):
-    if not await guard(update, context):
-        return
-    user_id = update.message.from_user.id
-    premium = is_premium_user(user_id)
-    check_and_reset_daily(user_id)
-    num_count, tg_count, aadhar_count = get_daily_counts(user_id)
-    veh_count = get_daily_veh_count(user_id)
-
-    if premium:
-        expiry = get_premium_expiry(user_id)
-        text = (
-            "⭐ *Your Plan: Premium*\n\n"
-            "*Expires:* `" + expiry + "`\n\n"
-            "📞 Number: `" + str(num_count) + "` used _(Unlimited)_\n"
-            "🪪 Aadhar: `" + str(aadhar_count) + "` used _(Unlimited)_\n"
-            "🚗 Vehicle: `" + str(veh_count) + "` used _(Unlimited)_\n"
-            "📱 TG Lookup: `" + str(tg_count) + "` used _(Unlimited)_"
-        )
-    else:
-        text = (
-            "🆓 *Your Plan: Free*\n\n"
-            "*Today's Usage:*\n"
-            "📞 Number: `" + str(num_count) + "/" + str(FREE_NUM_LIMIT) + "`\n"
-            "🪪 Aadhar: `" + str(aadhar_count) + "/" + str(FREE_NUM_LIMIT) + "`\n"
-            "🚗 Vehicle: `" + str(veh_count) + "/" + str(FREE_VEH_LIMIT) + "`\n"
-            "📱 TG Lookup: `" + str(tg_count) + "/" + str(FREE_TG_LIMIT) + "`\n\n"
-            "👉 Use /paidplan to see premium benefits."
-        )
-    await update.message.reply_text(text, parse_mode="Markdown")
-
-
-async def paidplan_command(update, context):
-    if not await guard(update, context):
-        return
-    text = (
-        "⭐ *Premium Plan — Benefits*\n\n"
-        "📞 Number Lookup: *Unlimited*\n"
-        "🪪 Aadhar Lookup: *Unlimited*\n"
-        "🚗 Vehicle Lookup: *Unlimited*\n"
-        "📱 TG Lookup: *Unlimited*\n\n"
-        "🆓 *Free Plan Limits:*\n"
-        "📞 Number: `" + str(FREE_NUM_LIMIT) + "/day`\n"
-        "🪪 Aadhar: `" + str(FREE_NUM_LIMIT) + "/day`\n"
-        "🚗 Vehicle: `" + str(FREE_VEH_LIMIT) + "/day`\n"
-        "📱 TG Lookup: `" + str(FREE_TG_LIMIT) + "/day`\n\n"
-        "💬 *To get Premium, contact:* @racksunn"
-    )
-    await update.message.reply_text(text, parse_mode="Markdown")
 
 
 if __name__ == "__main__":
@@ -1671,12 +1334,6 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("report", report_command))
     app.add_handler(CommandHandler("reply", reply_command))
     app.add_handler(CommandHandler("broadcast", broadcast_command))
-    app.add_handler(CommandHandler("premium", premium_command))
-    app.add_handler(CommandHandler("removepremium", removepremium_command))
-    app.add_handler(CommandHandler("premiumlist", premiumlist_command))
-    app.add_handler(CommandHandler("mypremium", mypremium_command))
-    app.add_handler(CommandHandler("myplan", myplan_command))
-    app.add_handler(CommandHandler("paidplan", paidplan_command))
     app.add_handler(CommandHandler("adminhelp", adminhelp_command))
     app.add_handler(CommandHandler("maintenance", maintenance_command))
     app.add_handler(CallbackQueryHandler(check_joined_callback, pattern="check_joined"))
