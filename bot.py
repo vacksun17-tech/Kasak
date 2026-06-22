@@ -4,6 +4,7 @@ import time
 import math
 import asyncio
 import sqlite3
+import pathlib
 import requests
 from datetime import datetime
 from flask import Flask
@@ -32,11 +33,18 @@ if not BOT_TOKEN:
 
 ADMIN_ID = 8300271033
 
-NUMBER_API_URL = "https://ayush-multi-apiv2.onrender.com/num?q={number}"
-AADHAR_API_URL = "https://ayush-multi-apiv2.onrender.com/adhar?q={aadhar}"
 VEH_API_URL = "https://ayush-multi-apiv2.onrender.com/veh?q={veh}"
 TG_LOOKUP_API3 = "https://shivam-ultra-api.vercel.app/tg?key=Y&id={term}"
 TG_LOOKUP_API4 = "https://api.igfollows.site/TG/index.php?type=user&key=OGGYxKRISH&term={term}"
+
+IA_BASE = "https://osint.invalidayushh.workers.dev"
+IA_KEY = "free-hai"
+IA_NUM_URL = IA_BASE + "/num?key=" + IA_KEY + "&q={number}"
+IA_ADHAR_URL = IA_BASE + "/adhar?key=" + IA_KEY + "&q={aadhar}"
+IA_TG_URL = IA_BASE + "/tg?key=" + IA_KEY + "&q={term}"
+IA_IFSC_URL = IA_BASE + "/ifsc?key=" + IA_KEY + "&q={code}"
+IA_INSTA_URL = IA_BASE + "/insta?key=" + IA_KEY + "&q={username}"
+IA_PAK_URL = IA_BASE + "/pak?key=" + IA_KEY + "&q={number}"
 
 CHANNEL_USERNAME = "@racksun19"
 CHANNEL_LINK = "https://t.me/racksun19"
@@ -48,7 +56,9 @@ COOLDOWN_SECONDS = 1
 maintenance_mode = False
 user_last_request = {}
 
-DB_FILE = "bot.db"
+_DATA_DIR = pathlib.Path("/data")
+_DATA_DIR.mkdir(parents=True, exist_ok=True)
+DB_FILE = str(_DATA_DIR / "bot.db")
 
 
 FREE_NUM_LIMIT = 15
@@ -658,11 +668,26 @@ async def help_command(update, context):
         "  Your report will be sent directly to the admin.\n\n"
         "  Example:\n"
         "   • `/report Bot is not responding properly`\n\n"
+        "🏦 *IFSC Code Lookup*\n"
+        "  Use /ifsc followed by the bank IFSC code.\n\n"
+        "  Example:\n"
+        "   • `/ifsc SBIN0001234`\n\n"
+        "📸 *Instagram Lookup*\n"
+        "  Use /insta followed by the Instagram username.\n\n"
+        "  Example:\n"
+        "   • `/insta instagram`\n\n"
+        "🇵🇰 *Pakistan Number Lookup*\n"
+        "  Use /pak followed by the Pakistan mobile number.\n\n"
+        "  Example:\n"
+        "   • `/pak 03001234567`\n\n"
         "📋 *Available Commands*\n"
         "  /start       — Start the bot\n"
         "  /num         — Phone number lookup\n"
         "  /aadhar      — Aadhar lookup\n"
         "  /veh         — Vehicle lookup\n"
+        "  /ifsc        — Bank IFSC code lookup\n"
+        "  /insta       — Instagram profile lookup\n"
+        "  /pak         — Pakistan number lookup\n"
         "  /info        — Your profile and usage stats\n"
         "  /report      — Report an issue to admin\n"
         "  /settings    — Show bot features\n"
@@ -938,31 +963,30 @@ async def num_lookup(update, context):
 
     entries = []
 
-    if not entries:
-        try:
-            url = NUMBER_API_URL.format(number=number)
-            data = await fetch_json(url)
-            results = []
-            if isinstance(data, dict):
-                inner = data.get("data", {})
-                if isinstance(inner, dict):
-                    result_obj = inner.get("result", {})
-                    if isinstance(result_obj, dict):
-                        results = result_obj.get("data", [])
-            if isinstance(results, list):
-                for r in results:
+    try:
+        data = await fetch_json(IA_NUM_URL.format(number=number), timeout=8)
+        if isinstance(data, dict) and data.get("success"):
+            raw = data.get("result", {})
+            rows = raw.get("data", []) if isinstance(raw, dict) else (raw if isinstance(raw, list) else [])
+            seen = set()
+            for r in rows:
+                if not isinstance(r, dict):
+                    continue
+                key = (str(r.get("NAME") or r.get("name") or "").lower().strip(), str(r.get("MOBILE") or r.get("mobile") or ""))
+                if key not in seen:
+                    seen.add(key)
                     entries.append({
-                        "name": r.get("NAME") or r.get("name"),
-                        "father": r.get("fname"),
-                        "mobile": r.get("MOBILE") or r.get("mobile"),
-                        "alt": r.get("alt"),
-                        "aadhar": r.get("id"),
-                        "email": r.get("email"),
-                        "circle": r.get("circle"),
+                        "name":    r.get("NAME") or r.get("name"),
+                        "father":  r.get("fname"),
+                        "mobile":  r.get("MOBILE") or r.get("mobile"),
+                        "alt":     r.get("alt"),
+                        "aadhar":  r.get("id"),
+                        "email":   r.get("email"),
+                        "circle":  r.get("circle"),
                         "address": r.get("ADDRESS") or r.get("address"),
                     })
-        except Exception:
-            pass
+    except Exception:
+        pass
 
     await delete_msg(context, chat_id, searching.message_id)
 
@@ -999,32 +1023,32 @@ async def aadhar_lookup(update, context):
 
     aadhar = context.args[0].replace(" ", "").replace("-", "")
     searching = await update.message.reply_text("🔍 Searching...")
-    try:
-        url = AADHAR_API_URL.format(aadhar=aadhar)
-        data = await fetch_json(url)
-    except Exception as e:
-        await delete_msg(context, chat_id, searching.message_id)
-        await update.message.reply_text("*Server Error!*\n\nRequest failed. Please try again later.", parse_mode="Markdown")
-        await log_error_to_admin(context, "aadhar_lookup: " + str(e))
-        return
 
     entries = []
-    if isinstance(data, dict):
-        inner = data.get("data", {})
-        if isinstance(inner, dict):
-            raw = inner.get("result", [])
+    try:
+        data = await fetch_json(IA_ADHAR_URL.format(aadhar=aadhar), timeout=8)
+        if isinstance(data, dict) and data.get("success"):
+            raw = data.get("result", [])
             if isinstance(raw, list):
+                seen = set()
                 for r in raw:
-                    entries.append({
-                        "name": r.get("NAME") or r.get("name"),
-                        "father": r.get("fname"),
-                        "mobile": r.get("MOBILE") or r.get("mobile"),
-                        "alt": r.get("alt"),
-                        "aadhar": r.get("id"),
-                        "email": r.get("email"),
-                        "circle": r.get("circle"),
-                        "address": r.get("ADDRESS") or r.get("address"),
-                    })
+                    if not isinstance(r, dict):
+                        continue
+                    key = (str(r.get("NAME") or r.get("name") or "").lower().strip(), str(r.get("MOBILE") or r.get("mobile") or ""))
+                    if key not in seen:
+                        seen.add(key)
+                        entries.append({
+                            "name":    r.get("NAME") or r.get("name"),
+                            "father":  r.get("fname"),
+                            "mobile":  r.get("MOBILE") or r.get("mobile"),
+                            "alt":     r.get("alt"),
+                            "aadhar":  r.get("id"),
+                            "email":   r.get("email"),
+                            "circle":  r.get("circle"),
+                            "address": r.get("ADDRESS") or r.get("address"),
+                        })
+    except Exception:
+        pass
 
     await delete_msg(context, chat_id, searching.message_id)
 
@@ -1185,23 +1209,32 @@ async def lookup(update, context):
     def _is_valid(d):
         if not d or not isinstance(d, dict):
             return False
+        # Handle invalidayushh-style: success: false
+        if d.get("success") is False:
+            return False
         status = str(d.get("status", "")).lower()
         msg = str(d.get("message", "") or d.get("msg", "") or d.get("error", "")).lower()
         if status in ("false", "0", "error", "fail", "failed") or "not found" in msg or "invalid" in msg or "no data" in msg:
             return False
+        # invalidayushh: success=true but result may be empty
+        if d.get("success") is True:
+            result = d.get("result") or d.get("data")
+            if not result:
+                return False
         return True
 
     async def _try_fetch(url):
         try:
-            r = await fetch_json(url, timeout=7)
+            r = await fetch_json(url, timeout=8)
             return r if _is_valid(r) else None
         except Exception:
             return None
 
-    # Call both APIs in parallel, return as soon as first valid result arrives
+    # Call all 3 APIs in parallel, return as soon as first valid result arrives
     _tasks = [
         asyncio.ensure_future(_try_fetch(TG_LOOKUP_API3.format(term=term))),
         asyncio.ensure_future(_try_fetch(TG_LOOKUP_API4.format(term=term))),
+        asyncio.ensure_future(_try_fetch(IA_TG_URL.format(term=term))),
     ]
     data = None
     _pending = set(_tasks)
@@ -1213,11 +1246,12 @@ async def lookup(update, context):
                 for _p in _pending:
                     _p.cancel()
                 break
-    # Retry once if both failed (handles cold-start/timeout)
+    # Retry once if all failed (handles cold-start/timeout)
     if data is None:
         _results = await asyncio.gather(
             _try_fetch(TG_LOOKUP_API3.format(term=term)),
             _try_fetch(TG_LOOKUP_API4.format(term=term)),
+            _try_fetch(IA_TG_URL.format(term=term)),
         )
         data = next((r for r in _results if r is not None), None)
 
@@ -1315,6 +1349,151 @@ async def broadcast_command(update, context):
 
 
 
+async def ifsc_lookup(update, context):
+    if not await guard_with_cooldown(update, context):
+        return
+    if not context.args:
+        await update.message.reply_text("*Usage:* `/ifsc SBIN0001234`", parse_mode="Markdown")
+        return
+    user_id = update.message.from_user.id
+    chat_id = update.message.chat_id
+    code = context.args[0].strip().upper()
+    searching = await update.message.reply_text("🔍 Searching...")
+    try:
+        data = await fetch_json(IA_IFSC_URL.format(code=code), timeout=8)
+    except Exception:
+        await delete_msg(context, chat_id, searching.message_id)
+        await update.message.reply_text("*Server Error!*\n\nRequest failed. Please try again later.", parse_mode="Markdown")
+        return
+    await delete_msg(context, chat_id, searching.message_id)
+    if not isinstance(data, dict) or not data.get("success") or not data.get("data"):
+        await update.message.reply_text("*❌ Data Not Found!*\n\nNo information found for this IFSC code.", parse_mode="Markdown")
+        return
+    increment_search(user_id)
+    d = data["data"]
+    def bval(v):
+        if v is True: return "✅ Yes"
+        if v is False: return "❌ No"
+        return str(v) if v else "N/A"
+    text = (
+        "🏦 *IFSC Lookup Result*\n\n"
+        "*IFSC:* `" + bval(d.get("IFSC")) + "`\n"
+        "*Bank:* `" + bval(d.get("BANK")) + "`\n"
+        "*Branch:* `" + bval(d.get("BRANCH")) + "`\n"
+        "*City:* `" + bval(d.get("CITY")) + "`\n"
+        "*District:* `" + bval(d.get("DISTRICT")) + "`\n"
+        "*State:* `" + bval(d.get("STATE")) + "`\n"
+        "*Address:* `" + bval(d.get("ADDRESS")) + "`\n"
+        "*MICR:* `" + bval(d.get("MICR")) + "`\n"
+        "*Contact:* `" + bval(d.get("CONTACT")) + "`\n"
+        "*NEFT:* " + bval(d.get("NEFT")) + "  "
+        "*RTGS:* " + bval(d.get("RTGS")) + "  "
+        "*IMPS:* " + bval(d.get("IMPS")) + "  "
+        "*UPI:* " + bval(d.get("UPI"))
+    )
+    await update.message.reply_text(text, parse_mode="Markdown")
+
+
+async def insta_lookup(update, context):
+    if not await guard_with_cooldown(update, context):
+        return
+    if not context.args:
+        await update.message.reply_text("*Usage:* `/insta username`", parse_mode="Markdown")
+        return
+    user_id = update.message.from_user.id
+    chat_id = update.message.chat_id
+    username = context.args[0].strip().lstrip("@")
+    searching = await update.message.reply_text("🔍 Searching...")
+    try:
+        data = await fetch_json(IA_INSTA_URL.format(username=username), timeout=10)
+    except Exception:
+        await delete_msg(context, chat_id, searching.message_id)
+        await update.message.reply_text("*Server Error!*\n\nRequest failed. Please try again later.", parse_mode="Markdown")
+        return
+    await delete_msg(context, chat_id, searching.message_id)
+    profile = None
+    if isinstance(data, dict) and data.get("success"):
+        result = data.get("result", {})
+        if isinstance(result, dict):
+            profile = result.get("profile")
+    if not profile:
+        await update.message.reply_text("*❌ Data Not Found!*\n\nNo information found for this Instagram username.", parse_mode="Markdown")
+        return
+    increment_search(user_id)
+    def iv(v):
+        return str(v) if v not in (None, "") else "N/A"
+    def fmt_num(n):
+        try:
+            n = int(n)
+            if n >= 1_000_000: return str(round(n/1_000_000, 1)) + "M"
+            if n >= 1_000: return str(round(n/1_000, 1)) + "K"
+            return str(n)
+        except Exception:
+            return str(n)
+    verified = "✅ Yes" if profile.get("is_verified") else "❌ No"
+    private = "🔒 Private" if profile.get("is_private") else "🌐 Public"
+    bio = str(profile.get("biography") or "N/A").replace("_", "\\_").replace("*", "\\*")
+    text = (
+        "📸 *Instagram Lookup Result*\n\n"
+        "*Username:* `@" + iv(profile.get("username")) + "`\n"
+        "*Full Name:* `" + iv(profile.get("full_name")) + "`\n"
+        "*User ID:* `" + iv(profile.get("id")) + "`\n"
+        "*Followers:* `" + fmt_num(profile.get("followers", 0)) + "`\n"
+        "*Following:* `" + fmt_num(profile.get("following", 0)) + "`\n"
+        "*Posts:* `" + iv(profile.get("posts")) + "`\n"
+        "*Verified:* " + verified + "\n"
+        "*Account:* " + private + "\n"
+        "*Bio:* " + bio
+    )
+    await update.message.reply_text(text, parse_mode="Markdown")
+
+
+async def pak_lookup(update, context):
+    if not await guard_with_cooldown(update, context):
+        return
+    if not context.args:
+        await update.message.reply_text("*Usage:* `/pak 03001234567`", parse_mode="Markdown")
+        return
+    user_id = update.message.from_user.id
+    chat_id = update.message.chat_id
+    number = context.args[0].replace("+", "").replace(" ", "").replace("-", "")
+    searching = await update.message.reply_text("🔍 Searching...")
+    try:
+        data = await fetch_json(IA_PAK_URL.format(number=number), timeout=8)
+    except Exception:
+        await delete_msg(context, chat_id, searching.message_id)
+        await update.message.reply_text("*Server Error!*\n\nRequest failed. Please try again later.", parse_mode="Markdown")
+        return
+    await delete_msg(context, chat_id, searching.message_id)
+    entries = []
+    if isinstance(data, dict) and data.get("success"):
+        result = data.get("result", {})
+        if isinstance(result, dict):
+            inner = result.get("data", {})
+            if isinstance(inner, dict):
+                rows = inner.get("data", {})
+                if isinstance(rows, dict):
+                    results_list = rows.get("results", [])
+                    if isinstance(results_list, list):
+                        entries = results_list
+                elif isinstance(rows, list):
+                    entries = rows
+    if not entries:
+        await update.message.reply_text("*❌ Data Not Found!*\n\nNo information found for this Pakistan number.", parse_mode="Markdown")
+        return
+    increment_search(user_id)
+    for i, entry in enumerate(entries, 1):
+        def pv(v): return str(v) if v not in (None, "") else "None"
+        text = (
+            "*Result " + str(i) + "/" + str(len(entries)) + "*\n\n"
+            "*Number:* `" + number + "`\n"
+            "*Name:* `" + pv(entry.get("name") or entry.get("NAME")) + "`\n"
+            "*Address:* `" + pv(entry.get("address") or entry.get("ADDRESS")) + "`\n"
+            "*Operator:* `" + pv(entry.get("operator") or entry.get("circle")) + "`"
+        )
+        await update.message.reply_text(text, parse_mode="Markdown")
+
+
 if __name__ == "__main__":
     init_db()
     keep_alive()
@@ -1334,6 +1513,9 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("report", report_command))
     app.add_handler(CommandHandler("reply", reply_command))
     app.add_handler(CommandHandler("broadcast", broadcast_command))
+    app.add_handler(CommandHandler("ifsc", ifsc_lookup))
+    app.add_handler(CommandHandler("insta", insta_lookup))
+    app.add_handler(CommandHandler("pak", pak_lookup))
     app.add_handler(CommandHandler("adminhelp", adminhelp_command))
     app.add_handler(CommandHandler("maintenance", maintenance_command))
     app.add_handler(CallbackQueryHandler(check_joined_callback, pattern="check_joined"))
