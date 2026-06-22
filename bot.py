@@ -1274,7 +1274,7 @@ async def lookup(update, context):
     increment_search(user_id)
 
     # Build result from whatever the API returns
-    SKIP_KEYS = {"status", "message", "msg", "error", "success", "code", "key", "type", "owner", "cached", "attempt", "powered by", "time", "version", "powered_by"}
+    SKIP_KEYS = {"status", "message", "msg", "error", "success", "code", "key", "type", "owner", "cached", "attempt", "powered by", "time", "version", "powered_by", "tag", "developer", "key_expiry", "key expiry", "key_exp", "dev", "credit"}
     LABEL_MAP = {
         "number": "Number", "phone": "Number", "mobile": "Number",
         "id": "TG ID", "user_id": "TG ID", "tg_id": "TG ID", "userid": "TG ID",
