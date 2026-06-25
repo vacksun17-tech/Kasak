@@ -33,7 +33,6 @@ if not BOT_TOKEN:
 
 ADMIN_ID = 8300271033
 
-VEH_API_URL = "https://ayush-multi-apiv2.onrender.com/veh?q={veh}"
 TG_LOOKUP_API3 = "https://shivam-ultra-api.vercel.app/tg?key=Y&id={term}"
 TG_LOOKUP_API4 = "https://api.igfollows.site/TG/index.php?type=user&key=OGGYxKRISH&term={term}"
 
@@ -45,6 +44,8 @@ IA_TG_URL = IA_BASE + "/tg?key=" + IA_KEY + "&q={term}"
 IA_IFSC_URL = IA_BASE + "/ifsc?key=" + IA_KEY + "&q={code}"
 IA_INSTA_URL = IA_BASE + "/insta?key=" + IA_KEY + "&q={username}"
 IA_PAK_URL = IA_BASE + "/pak?key=" + IA_KEY + "&q={number}"
+IA_VEH_URL = IA_BASE + "/veh?key=" + IA_KEY + "&q={veh}"
+IA_FAMILYINFO_URL = IA_BASE + "/familyinfo?key=" + IA_KEY + "&q={aadhar}"
 
 CHANNEL_USERNAME = "@racksun19"
 CHANNEL_LINK = "https://t.me/racksun19"
@@ -618,6 +619,8 @@ async def settings_command(update, context):
         "Use `/num <number>` to fetch name, address, circle, email\n\n"
         "🪪 *Aadhar Lookup*\n"
         "Use `/aadhar <12-digit number>` to fetch linked mobile, address, email\n\n"
+        "👨‍👩‍👧‍👦 *Family Info Lookup*\n"
+        "Use `/familyinfo <12-digit Aadhar>` to fetch family member details\n\n"
         "🚗 *Vehicle Lookup*\n"
         "Use `/veh <plate number>` to fetch vehicle owner info\n\n"
         "👤 *Your Info*\n"
@@ -680,10 +683,15 @@ async def help_command(update, context):
         "  Use /pak followed by the Pakistan mobile number.\n\n"
         "  Example:\n"
         "   • `/pak 03001234567`\n\n"
+        "👨‍👩‍👧‍👦 *Family Info Lookup*\n"
+        "  Use /familyinfo followed by 12-digit Aadhar number.\n\n"
+        "  Example:\n"
+        "   • `/familyinfo 652507323571`\n\n"
         "📋 *Available Commands*\n"
         "  /start       — Start the bot\n"
         "  /num         — Phone number lookup\n"
         "  /aadhar      — Aadhar lookup\n"
+        "  /familyinfo  — Family info via Aadhar\n"
         "  /veh         — Vehicle lookup\n"
         "  /ifsc        — Bank IFSC code lookup\n"
         "  /insta       — Instagram profile lookup\n"
@@ -1091,8 +1099,8 @@ async def veh_lookup(update, context):
     plate = context.args[0].strip().upper().replace(" ", "")
     searching = await update.message.reply_text("🔍 Searching...")
     try:
-        url = VEH_API_URL.format(veh=plate)
-        data = await fetch_json(url)
+        url = IA_VEH_URL.format(veh=plate)
+        raw = await fetch_json(url, timeout=10)
     except Exception as e:
         await delete_msg(context, chat_id, searching.message_id)
         await update.message.reply_text("*Server Error!*\n\nRequest failed. Please try again later.", parse_mode="Markdown")
@@ -1101,7 +1109,12 @@ async def veh_lookup(update, context):
 
     await delete_msg(context, chat_id, searching.message_id)
 
-    if not data or (isinstance(data, dict) and not data.get("data") and not data.get("success") and not data.get("result")):
+    if not isinstance(raw, dict) or not raw.get("success"):
+        await update.message.reply_text("*❌ Data Not Found!*\n\nNo information found for this vehicle number.", parse_mode="Markdown")
+        return
+
+    data = raw.get("data")
+    if not data or (isinstance(data, str) and ("suspended" in data.lower() or "<!doctype" in data.lower())):
         await update.message.reply_text("*❌ Data Not Found!*\n\nNo information found for this vehicle number.", parse_mode="Markdown")
         return
 
@@ -1150,11 +1163,7 @@ async def veh_lookup(update, context):
         lines.append("*" + label + ":* `" + v + "`")
 
     if len(lines) <= 1:
-        not_found_msg = "*❌ Data Not Found!*\n\nNo information found for this vehicle number."
-        if not is_premium_user(user_id) and user_id != ADMIN_ID:
-            veh_count = get_daily_veh_count(user_id)
-            not_found_msg += "\n\n✅ _Credit not used._"
-        await update.message.reply_text(not_found_msg, parse_mode="Markdown")
+        await update.message.reply_text("*❌ Data Not Found!*\n\nNo information found for this vehicle number.", parse_mode="Markdown")
         return
 
     await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
@@ -1494,6 +1503,102 @@ async def pak_lookup(update, context):
         await update.message.reply_text(text, parse_mode="Markdown")
 
 
+async def familyinfo_lookup(update, context):
+    if not await guard_with_cooldown(update, context):
+        return
+    if not context.args:
+        await update.message.reply_text(
+            "*Usage:* `/familyinfo 652507323571`\n\n_Enter 12-digit Aadhar number._",
+            parse_mode="Markdown",
+        )
+        return
+    user_id = update.message.from_user.id
+    chat_id = update.message.chat_id
+
+    aadhar = context.args[0].replace(" ", "").replace("-", "")
+    if len(aadhar) != 12 or not aadhar.isdigit():
+        await update.message.reply_text("*❌ Invalid Aadhar!*\n\nPlease enter a valid 12-digit Aadhar number.", parse_mode="Markdown")
+        return
+
+    searching = await update.message.reply_text("🔍 Searching family info...")
+    try:
+        raw = await fetch_json(IA_FAMILYINFO_URL.format(aadhar=aadhar), timeout=12)
+    except Exception as e:
+        await delete_msg(context, chat_id, searching.message_id)
+        await update.message.reply_text("*Server Error!*\n\nRequest failed. Please try again later.", parse_mode="Markdown")
+        await log_error_to_admin(context, "familyinfo_lookup: " + str(e))
+        return
+
+    await delete_msg(context, chat_id, searching.message_id)
+
+    if not isinstance(raw, dict) or not raw.get("success"):
+        await update.message.reply_text("*❌ Data Not Found!*\n\nNo family info found for this Aadhar.", parse_mode="Markdown")
+        return
+
+    data = raw.get("data") or raw.get("result")
+    if not data:
+        await update.message.reply_text("*❌ Data Not Found!*\n\nNo family info found for this Aadhar.", parse_mode="Markdown")
+        return
+
+    increment_search(user_id)
+
+    SKIP_KEYS = {"status", "message", "msg", "error", "success", "code", "key", "developer", "attempt", "cached"}
+    LABEL_MAP = {
+        "name": "Name", "fname": "Father Name", "mobile": "Mobile",
+        "alt": "Alt Mobile", "id": "Aadhar", "email": "Email",
+        "address": "Address", "circle": "Circle", "dob": "DOB",
+        "gender": "Gender", "state": "State", "district": "District",
+        "pincode": "Pincode", "relation": "Relation",
+    }
+
+    def flatten_family(obj, prefix=""):
+        items = {}
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                items.update(flatten_family(v, k))
+        elif isinstance(obj, list) and len(obj) > 0:
+            for i, item in enumerate(obj):
+                sub = flatten_family(item, prefix)
+                for sk, sv in sub.items():
+                    items[sk + "_" + str(i) if sk in items else sk] = sv
+        else:
+            if prefix and str(obj).strip() and str(obj).lower() not in ("none", "null", "n/a", "", "0"):
+                items[prefix.lower()] = str(obj).strip()
+        return items
+
+    if isinstance(data, list):
+        members = data
+    elif isinstance(data, dict):
+        members = data.get("members") or data.get("family") or data.get("results") or [data]
+    else:
+        members = []
+
+    if members and isinstance(members, list) and len(members) > 0:
+        for i, member in enumerate(members, 1):
+            flat = flatten_family(member)
+            lines = ["👨‍👩‍👧‍👦 *Family Info — Member " + str(i) + "/" + str(len(members)) + "*\n\n*Aadhar:* `" + aadhar + "`"]
+            for k, v in flat.items():
+                if any(k.startswith(sk) for sk in SKIP_KEYS):
+                    continue
+                base_key = k.split("_")[0] if "_" in k else k
+                label = LABEL_MAP.get(base_key, k.replace("_", " ").title())
+                lines.append("*" + label + ":* `" + v + "`")
+            if len(lines) > 1:
+                await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
+    else:
+        flat = flatten_family(data)
+        lines = ["👨‍👩‍👧‍👦 *Family Info*\n\n*Aadhar:* `" + aadhar + "`"]
+        for k, v in flat.items():
+            if k in SKIP_KEYS:
+                continue
+            label = LABEL_MAP.get(k, k.replace("_", " ").title())
+            lines.append("*" + label + ":* `" + v + "`")
+        if len(lines) <= 1:
+            await update.message.reply_text("*❌ Data Not Found!*\n\nNo family info found for this Aadhar.", parse_mode="Markdown")
+            return
+        await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
+
+
 if __name__ == "__main__":
     init_db()
     keep_alive()
@@ -1516,6 +1621,7 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("ifsc", ifsc_lookup))
     app.add_handler(CommandHandler("insta", insta_lookup))
     app.add_handler(CommandHandler("pak", pak_lookup))
+    app.add_handler(CommandHandler("familyinfo", familyinfo_lookup))
     app.add_handler(CommandHandler("adminhelp", adminhelp_command))
     app.add_handler(CommandHandler("maintenance", maintenance_command))
     app.add_handler(CallbackQueryHandler(check_joined_callback, pattern="check_joined"))
