@@ -51,6 +51,10 @@ CHANNEL_USERNAME = "@racksun19"
 CHANNEL_LINK = "https://t.me/racksun19"
 GROUP_USERNAME = "@racksungroup"
 GROUP_LINK = "https://t.me/racksungroup"
+CHANNEL2_USERNAME = "@YeuIins"
+CHANNEL2_LINK = "https://t.me/YeuIins"
+
+IP_API_URL = "https://ip-dwy8.onrender.com/api/rackipapi?ip={ip}"
 
 COOLDOWN_SECONDS = 1
 
@@ -466,6 +470,12 @@ async def is_member(user_id, context):
     except Exception:
         return False
     try:
+        ch2 = await context.bot.get_chat_member(chat_id=CHANNEL2_USERNAME, user_id=user_id)
+        if ch2.status not in allowed:
+            return False
+    except Exception:
+        return False
+    try:
         gr = await context.bot.get_chat_member(chat_id=GROUP_USERNAME, user_id=user_id)
         if gr.status in not_allowed:
             return False
@@ -478,16 +488,18 @@ async def send_join_message(update, context):
     user = update.message.from_user
     first_name = user.first_name or "User"
     join_button = InlineKeyboardMarkup([
-        [InlineKeyboardButton("📢 Join Channel", url=CHANNEL_LINK)],
+        [InlineKeyboardButton("📢 Join Channel 1", url=CHANNEL_LINK)],
+        [InlineKeyboardButton("📢 Join Channel 2", url=CHANNEL2_LINK)],
         [InlineKeyboardButton("👥 Join Group", url=GROUP_LINK)],
         [InlineKeyboardButton("✅ I have Joined", callback_data="check_joined")],
     ])
     text = (
         "⚠️ *Hello " + first_name + "!*\n\n"
-        "Join our channel and group to use this bot.\n\n"
-        "1️⃣ Join Channel: @racksun19\n"
-        "2️⃣ Join Group: @racksungroup\n\n"
-        "After joining both, click *I have Joined* button."
+        "Join our channels and group to use this bot.\n\n"
+        "1️⃣ Join Channel 1: @racksun19\n"
+        "2️⃣ Join Channel 2: @YeuIins\n"
+        "3️⃣ Join Group: @racksungroup\n\n"
+        "After joining all, click *I have Joined* button."
     )
     sent = await update.message.reply_text(text, reply_markup=join_button, parse_mode="Markdown")
     context.user_data["join_msg_id"] = sent.message_id
@@ -621,6 +633,8 @@ async def settings_command(update, context):
         "Use `/aadhar <12-digit number>` to fetch linked mobile, address, email\n\n"
         "👨‍👩‍👧‍👦 *Family Info Lookup*\n"
         "Use `/familyinfo <12-digit Aadhar>` to fetch family member details\n\n"
+        "🌐 *IP Address Lookup*\n"
+        "Use `/ip <IPv4 address>` to fetch location, ISP, VPN/proxy, fraud risk\n\n"
         "🚗 *Vehicle Lookup*\n"
         "Use `/veh <plate number>` to fetch vehicle owner info\n\n"
         "👤 *Your Info*\n"
@@ -687,12 +701,17 @@ async def help_command(update, context):
         "  Use /familyinfo followed by 12-digit Aadhar number.\n\n"
         "  Example:\n"
         "   • `/familyinfo 652507323571`\n\n"
+        "🌐 *IP Address Lookup*\n"
+        "  Use /ip followed by any IPv4 address.\n\n"
+        "  Example:\n"
+        "   • `/ip 106.192.134.155`\n\n"
         "📋 *Available Commands*\n"
         "  /start       — Start the bot\n"
         "  /num         — Phone number lookup\n"
         "  /aadhar      — Aadhar lookup\n"
         "  /familyinfo  — Family info via Aadhar\n"
         "  /veh         — Vehicle lookup\n"
+        "  /ip          — IP address lookup\n"
         "  /ifsc        — Bank IFSC code lookup\n"
         "  /insta       — Instagram profile lookup\n"
         "  /pak         — Pakistan number lookup\n"
@@ -1503,6 +1522,99 @@ async def pak_lookup(update, context):
         await update.message.reply_text(text, parse_mode="Markdown")
 
 
+async def ip_lookup(update, context):
+    if not await guard_with_cooldown(update, context):
+        return
+    if not context.args:
+        await update.message.reply_text(
+            "*Usage:* `/ip 106.192.134.155`\n\n_Enter any IPv4 address._",
+            parse_mode="Markdown",
+        )
+        return
+    user_id = update.message.from_user.id
+    chat_id = update.message.chat_id
+
+    ip = context.args[0].strip()
+    searching = await update.message.reply_text("🔍 Searching IP info...")
+    try:
+        data = await fetch_json(IP_API_URL.format(ip=ip), timeout=12)
+    except Exception as e:
+        await delete_msg(context, chat_id, searching.message_id)
+        await update.message.reply_text("*Server Error!*\n\nRequest failed. Please try again later.", parse_mode="Markdown")
+        await log_error_to_admin(context, "ip_lookup: " + str(e))
+        return
+
+    await delete_msg(context, chat_id, searching.message_id)
+
+    if not isinstance(data, dict) or str(data.get("status", "")).lower() != "success":
+        await update.message.reply_text("*❌ Data Not Found!*\n\nNo information found for this IP.", parse_mode="Markdown")
+        return
+
+    increment_search(user_id)
+
+    results = data.get("results", {})
+
+    def gv(*keys):
+        for src in results.values():
+            if not isinstance(src, dict):
+                continue
+            for k in keys:
+                v = src.get(k)
+                if v and str(v).strip() and str(v).lower() not in ("none", "null", "n/a", ""):
+                    return str(v).strip()
+        return "None"
+
+    s1 = results.get("source_1_ipapi_com", {})
+    s4 = results.get("source_4_ipwhois", {})
+    s5 = results.get("source_5_ipinfo_io", {})
+    s8 = results.get("source_8_mega_enterprise_intel", {})
+    s9 = results.get("source_9_fraud_risk_score", {})
+    s10 = results.get("source_10_vehicle_rto_intel", {})
+
+    city    = gv("city")
+    region  = gv("region")
+    country = s1.get("country") or gv("country")
+    isp     = s1.get("isp") or s4.get("isp") or gv("isp")
+    loc     = s5.get("loc") or "None"
+    zipcode = s1.get("zip") or gv("postal", "zip") or "None"
+    ip_type = s4.get("type") or s9.get("connection_type") or "None"
+    timezone = s8.get("timezone_name") or gv("timezone") or "None"
+    is_vpn  = s8.get("is_vpn_or_proxy") or "None"
+    is_mobile = s8.get("is_mobile_data") or "None"
+    is_hosting = s8.get("is_hosting_server") or "None"
+    fraud   = s9.get("fraud_risk_score") or "None"
+    is_tor  = s9.get("is_tor_network") or "None"
+    currency = s8.get("currency_name") or gv("currency_code") or "None"
+    veh_state = s10.get("detected_region_state") or "None"
+    veh_prefix = s10.get("expected_vehicle_plate_prefix") or "None"
+
+    text = (
+        "🌐 *IP Lookup Result*\n\n"
+        "*IP:* `" + ip + "`\n"
+        "*Type:* `" + ip_type + "`\n\n"
+        "📍 *Location*\n"
+        "*City:* `" + city + "`\n"
+        "*Region:* `" + region + "`\n"
+        "*Country:* `" + country + "`\n"
+        "*ZIP:* `" + zipcode + "`\n"
+        "*Coordinates:* `" + loc + "`\n"
+        "*Timezone:* `" + timezone + "`\n\n"
+        "📡 *Network*\n"
+        "*ISP:* `" + isp + "`\n"
+        "*Currency:* `" + currency + "`\n\n"
+        "🔐 *Security*\n"
+        "*VPN/Proxy:* `" + is_vpn + "`\n"
+        "*Mobile Data:* `" + is_mobile + "`\n"
+        "*Hosting Server:* `" + is_hosting + "`\n"
+        "*Tor Network:* `" + is_tor + "`\n"
+        "*Fraud Risk:* `" + fraud + "`\n\n"
+        "🚗 *RTO Intel*\n"
+        "*State:* `" + veh_state + "`\n"
+        "*Vehicle Prefix:* `" + veh_prefix + "`"
+    )
+    await update.message.reply_text(text, parse_mode="Markdown")
+
+
 async def familyinfo_lookup(update, context):
     if not await guard_with_cooldown(update, context):
         return
@@ -1621,6 +1733,7 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("ifsc", ifsc_lookup))
     app.add_handler(CommandHandler("insta", insta_lookup))
     app.add_handler(CommandHandler("pak", pak_lookup))
+    app.add_handler(CommandHandler("ip", ip_lookup))
     app.add_handler(CommandHandler("familyinfo", familyinfo_lookup))
     app.add_handler(CommandHandler("adminhelp", adminhelp_command))
     app.add_handler(CommandHandler("maintenance", maintenance_command))
