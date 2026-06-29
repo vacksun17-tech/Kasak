@@ -56,11 +56,6 @@ CHANNEL2_LINK = "https://t.me/YeuIins"
 
 IP_API_URL = "https://ip-dwy8.onrender.com/api/rackipapi?ip={ip}"
 
-WA_TG_NUM    = "https://wasifali-telegram-id-to-number.vercel.app/api?userid={userid}"
-WA_SIM_INFO  = "https://sim-info-api.wasif-ali.workers.dev/?search={number}"
-PAN_API      = "https://anon-gst-info.vercel.app/advanced/pan?key=tempg2206&pan={pan}"
-GSTIN_API    = "https://anon-gst-info.vercel.app/advanced/gstin?key=tempg2206&gstin={gstin}"
-
 COOLDOWN_SECONDS = 1
 
 maintenance_mode = False
@@ -720,10 +715,7 @@ async def help_command(update, context):
         "  /ifsc        — Bank IFSC code lookup\n"
         "  /insta       — Instagram profile lookup\n"
         "  /pak         — Pakistan number lookup\n"
-        "  /paknum      — Pakistan SIM info\n"
-        "  /tgnum       — Telegram ID to number\n"
-        "  /pan         — PAN card lookup\n"
-        "  /gstin       — GSTIN lookup\n"
+        "  /info        — Your profile and usage stats\n"
         "  /report      — Report an issue to admin\n"
         "  /settings    — Show bot features\n"
         "  /back        — Back to main menu\n"
@@ -807,6 +799,55 @@ async def grouphelp_command(update, context):
     )
     await update.message.reply_text(text, parse_mode="Markdown")
 
+
+
+async def info_command(update, context):
+    """Any user: /info → own profile. Reply to msg → that person's info.
+    Admin: /info <user_id> → any user's info."""
+    if not await guard(update, context):
+        return
+    user_id = update.message.from_user.id
+    target_id = user_id
+
+    resolved_id, _, err = await resolve_target_id(update, context, context.args or [])
+    if resolved_id:
+        target_id = resolved_id
+    elif context.args or update.message.reply_to_message:
+        await update.message.reply_text(err or "❌ *Invalid input!*", parse_mode="Markdown")
+        return
+
+    row = get_user_info_db(target_id)
+    if not row:
+        await update.message.reply_text(
+            "❌ *User not found in database.*\n\nThis user has never used the bot.",
+            parse_mode="Markdown",
+        )
+        return
+
+    uid, first_name, username, join_date, search_count, banned, ban_reason, muted, mute_reason = row
+    uname_display = "@" + username if username else "N/A"
+
+    if banned:
+        status = "🚫 Banned"
+        if ban_reason:
+            status += "\n*Ban Reason:* `" + ban_reason + "`"
+    elif muted:
+        status = "🔇 Muted"
+        if mute_reason:
+            status += "\n*Mute Reason:* `" + mute_reason + "`"
+    else:
+        status = "✅ Active"
+
+    text = (
+        "👤 *User Info*\n\n"
+        "*Name:* `" + val(first_name) + "`\n"
+        "*Username:* " + uname_display + "\n"
+        "*User ID:* `" + str(uid) + "`\n"
+        "*Joined:* `" + val(join_date) + "`\n"
+        "*Total Searches:* `" + str(search_count) + "`\n"
+        "*Status:* " + status
+    )
+    await update.message.reply_text(text, parse_mode="Markdown")
 
 
 async def stats_command(update, context):
@@ -1670,165 +1711,6 @@ async def familyinfo_lookup(update, context):
         await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
 
 
-async def tgnum_lookup(update, context):
-    if not await guard_with_cooldown(update, context):
-        return
-    if not context.args:
-        await update.message.reply_text("*Usage:* `/tgnum <user_id>`\n\nExample: `/tgnum 1234567890`", parse_mode="Markdown")
-        return
-    user_id = update.message.from_user.id
-    userid = context.args[0].strip()
-    if not userid.lstrip("-").isdigit():
-        await update.message.reply_text("❌ *Invalid User ID!*\n\nPlease provide a numeric Telegram user ID.", parse_mode="Markdown")
-        return
-    msg = await update.message.reply_text("⏳ Looking up Telegram ID...")
-    try:
-        data = await fetch_json(WA_TG_NUM.format(userid=userid), timeout=15)
-    except Exception:
-        await msg.edit_text("❌ *Request failed.* API is not responding.", parse_mode="Markdown")
-        return
-    if not data or not data.get("success"):
-        err = data.get("message") or data.get("error") or "No data found."
-        await msg.edit_text("❌ *Not Found!*\n\n" + str(err), parse_mode="Markdown")
-        return
-    def pv(v):
-        if v in (None, "", "null", "NULL", "N/A"): return "None"
-        return str(v)
-    result = data.get("result") or data.get("data") or data
-    text = (
-        "📱 *Telegram ID Lookup*\n\n"
-        "*User ID:* `" + pv(userid) + "`\n"
-        "*Phone:* `" + pv(result.get("phone") or result.get("number") or result.get("mobile")) + "`\n"
-        "*Name:* `" + pv(result.get("name") or result.get("first_name")) + "`\n"
-        "*Username:* `" + pv(result.get("username")) + "`"
-    )
-    increment_search(user_id)
-    await msg.edit_text(text, parse_mode="Markdown")
-
-
-async def paknum_lookup(update, context):
-    if not await guard_with_cooldown(update, context):
-        return
-    if not context.args:
-        await update.message.reply_text("*Usage:* `/paknum <number>`\n\nExample: `/paknum 03001234567`", parse_mode="Markdown")
-        return
-    user_id = update.message.from_user.id
-    raw_num = context.args[0].strip()
-    if raw_num.startswith("03") and len(raw_num) == 11:
-        number = "92" + raw_num[1:]
-    elif raw_num.startswith("+92"):
-        number = raw_num[1:]
-    else:
-        number = raw_num
-    msg = await update.message.reply_text("⏳ Looking up SIM info...")
-    try:
-        data = await fetch_json(WA_SIM_INFO.format(number=number), timeout=15)
-    except Exception:
-        await msg.edit_text("❌ *Request failed.* API is not responding.", parse_mode="Markdown")
-        return
-    if not data or not data.get("success"):
-        err = data.get("message") or data.get("error") or "No data found."
-        await msg.edit_text("❌ *Not Found!*\n\n" + str(err), parse_mode="Markdown")
-        return
-    records = data.get("records") or data.get("data") or data.get("result") or []
-    if isinstance(records, dict):
-        records = [records]
-    if not records:
-        await msg.edit_text("*❌ Not Found!*\n\nNo data found for this number.", parse_mode="Markdown")
-        return
-    increment_search(user_id)
-    def pv(v):
-        if v in (None, "", "null", "NULL", "N/A"): return "None"
-        return str(v)
-    await msg.delete()
-    for i, record in enumerate(records, 1):
-        text = (
-            "🇵🇰 *Pakistan SIM Info*"
-            + (" — *" + str(i) + "/" + str(len(records)) + "*" if len(records) > 1 else "") + "\n\n"
-            "*Number:* `" + (record.get("mobile") or raw_num) + "`\n"
-            "*Name:* `" + pv(record.get("name") or record.get("NAME")) + "`\n"
-            "*CNIC:* `" + pv(record.get("cnic") or record.get("CNIC") or record.get("id")) + "`\n"
-            "*Network:* `" + pv(record.get("network") or record.get("operator")) + "`\n"
-            "*Address:* `" + pv(record.get("address") or record.get("ADDRESS")) + "`\n"
-            "*City:* `" + pv(record.get("city") or record.get("district")) + "`\n"
-            "*Province:* `" + pv(record.get("province") or record.get("state")) + "`"
-        )
-        await update.message.reply_text(text, parse_mode="Markdown")
-
-
-async def pan_lookup(update, context):
-    if not await guard_with_cooldown(update, context):
-        return
-    if not context.args:
-        await update.message.reply_text("*Usage:* `/pan <PAN>`\n\nExample: `/pan AAYFK4129N`", parse_mode="Markdown")
-        return
-    user_id = update.message.from_user.id
-    pan = context.args[0].strip().upper()
-    msg = await update.message.reply_text("⏳ Looking up PAN details...")
-    try:
-        data = await fetch_json(PAN_API.format(pan=pan), timeout=15)
-    except Exception:
-        await msg.edit_text("❌ *Request failed.* API is not responding.", parse_mode="Markdown")
-        return
-    if not data or data.get("status") == "error" or not data.get("data"):
-        err = data.get("message") or data.get("error") or "No data found."
-        await msg.edit_text("❌ *Not Found!*\n\n" + str(err), parse_mode="Markdown")
-        return
-    def pv(v):
-        if v in (None, "", "null", "NULL", "N/A", "NA"): return "None"
-        return str(v)
-    d = data.get("data") or data
-    text = (
-        "🪪 *PAN Card Info*\n\n"
-        "*PAN:* `" + pv(d.get("pan") or pan) + "`\n"
-        "*Name:* `" + pv(d.get("name") or d.get("full_name") or d.get("firstName", "") + " " + d.get("lastName", "")) + "`\n"
-        "*Type:* `" + pv(d.get("pan_type") or d.get("type") or d.get("category")) + "`\n"
-        "*Status:* `" + pv(d.get("status") or d.get("pan_status")) + "`\n"
-        "*Last Updated:* `" + pv(d.get("last_updated") or d.get("lastUpdated") or d.get("date")) + "`"
-    )
-    increment_search(user_id)
-    await msg.edit_text(text, parse_mode="Markdown")
-
-
-async def gstin_lookup(update, context):
-    if not await guard_with_cooldown(update, context):
-        return
-    if not context.args:
-        await update.message.reply_text("*Usage:* `/gstin <GSTIN>`\n\nExample: `/gstin 09AAYFK4129N1ZF`", parse_mode="Markdown")
-        return
-    user_id = update.message.from_user.id
-    gstin = context.args[0].strip().upper()
-    msg = await update.message.reply_text("⏳ Looking up GSTIN details...")
-    try:
-        data = await fetch_json(GSTIN_API.format(gstin=gstin), timeout=15)
-    except Exception:
-        await msg.edit_text("❌ *Request failed.* API is not responding.", parse_mode="Markdown")
-        return
-    if not data or data.get("status") == "error" or not data.get("data"):
-        err = data.get("message") or data.get("error") or "No data found."
-        await msg.edit_text("❌ *Not Found!*\n\n" + str(err), parse_mode="Markdown")
-        return
-    def pv(v):
-        if v in (None, "", "null", "NULL", "N/A", "NA"): return "None"
-        return str(v)
-    d = data.get("data") or data
-    addr = d.get("address") or d.get("principalPlaceOfBusiness") or d.get("pradr") or {}
-    addr_str = pv(addr.get("adr") or addr.get("address") or addr) if isinstance(addr, dict) else pv(addr)
-    text = (
-        "🏢 *GSTIN Info*\n\n"
-        "*GSTIN:* `" + pv(d.get("gstin") or gstin) + "`\n"
-        "*Trade Name:* `" + pv(d.get("trade_name") or d.get("tradeName") or d.get("tradeNam")) + "`\n"
-        "*Legal Name:* `" + pv(d.get("legal_name") or d.get("legalName") or d.get("lgnm")) + "`\n"
-        "*Status:* `" + pv(d.get("status") or d.get("sts")) + "`\n"
-        "*Type:* `" + pv(d.get("taxpayer_type") or d.get("taxpayerType") or d.get("dty")) + "`\n"
-        "*State:* `" + pv(d.get("state") or d.get("stj")) + "`\n"
-        "*Registration Date:* `" + pv(d.get("registration_date") or d.get("rgdt")) + "`\n"
-        "*Address:* `" + addr_str + "`"
-    )
-    increment_search(user_id)
-    await msg.edit_text(text, parse_mode="Markdown")
-
-
 if __name__ == "__main__":
     init_db()
     keep_alive()
@@ -1838,6 +1720,7 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("num", num_lookup))
     app.add_handler(CommandHandler("aadhar", aadhar_lookup))
     app.add_handler(CommandHandler("veh", veh_lookup))
+    app.add_handler(CommandHandler("info", info_command))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("grouphelp", grouphelp_command))
     app.add_handler(CommandHandler("settings", settings_command))
@@ -1852,10 +1735,6 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("pak", pak_lookup))
     app.add_handler(CommandHandler("ip", ip_lookup))
     app.add_handler(CommandHandler("familyinfo", familyinfo_lookup))
-    app.add_handler(CommandHandler("tgnum", tgnum_lookup))
-    app.add_handler(CommandHandler("paknum", paknum_lookup))
-    app.add_handler(CommandHandler("pan", pan_lookup))
-    app.add_handler(CommandHandler("gstin", gstin_lookup))
     app.add_handler(CommandHandler("adminhelp", adminhelp_command))
     app.add_handler(CommandHandler("maintenance", maintenance_command))
     app.add_handler(CallbackQueryHandler(check_joined_callback, pattern="check_joined"))
