@@ -56,18 +56,10 @@ CHANNEL2_LINK = "https://t.me/YeuIins"
 
 IP_API_URL = "https://ip-dwy8.onrender.com/api/rackipapi?ip={ip}"
 
-WA_TIKTOK_DL   = "https://wasifali-downloader-1s1g.vercel.app/api/tiktok?url={url}"
-WA_FB_DL       = "https://wasifali-downloader-1s1g.vercel.app/api/facebook?url={url}"
-WA_IG_DL       = "https://wasifali-downloader-1s1g.vercel.app/api/instagram?url={url}"
-WA_TTSTALK     = "https://wasif-ali-tiktok-stalker.vercel.app/api/tiktok?username={username}"
-WA_IGSTALK     = "https://wasifali-insta-stalker.vercel.app/api/iginfo?username={username}"
-WA_YT_DL       = "https://wasifali-yt-downloader.vercel.app/api/youtube?url={url}"
-WA_PINTEREST   = "https://wasifali-pinterest-search.vercel.app/search?q={query}"
-WA_YT_THUMB    = "https://wasifali-yt-thumb-downloader.vercel.app/api/thumbnail?url={url}"
-WA_YT_SEARCH   = "https://wasifali-yt-search.vercel.app/search?q={query}"
-WA_SAAVN       = "https://wasifali-saavn-song-search-api.vercel.app/search?q={query}"
-WA_TG_NUM      = "https://wasifali-telegram-id-to-number.vercel.app/api?userid={userid}"
-WA_SIM_INFO    = "https://sim-info-api.wasif-ali.workers.dev/?search={number}"
+WA_TG_NUM    = "https://wasifali-telegram-id-to-number.vercel.app/api?userid={userid}"
+WA_SIM_INFO  = "https://sim-info-api.wasif-ali.workers.dev/?search={number}"
+PAN_API      = "https://anon-gst-info.vercel.app/advanced/pan?key=tempg2206&pan={pan}"
+GSTIN_API    = "https://anon-gst-info.vercel.app/advanced/gstin?key=tempg2206&gstin={gstin}"
 
 COOLDOWN_SECONDS = 1
 
@@ -718,42 +710,6 @@ async def help_command(update, context):
         "  Use /ip followed by any IPv4 address.\n\n"
         "  Example:\n"
         "   • `/ip 106.192.134.155`\n\n"
-        "🎵 *TikTok Downloader*\n"
-        "  Use /tiktok followed by TikTok video URL.\n"
-        "  Example: `/tiktok https://vm.tiktok.com/xxx`\n\n"
-        "📘 *Facebook Downloader*\n"
-        "  Use /fbdl followed by Facebook video URL.\n"
-        "  Example: `/fbdl https://fb.com/reel/xxx`\n\n"
-        "📸 *Instagram Downloader*\n"
-        "  Use /igdl followed by Instagram reel/post URL.\n"
-        "  Example: `/igdl https://instagram.com/reel/xxx`\n\n"
-        "▶️ *YouTube Downloader*\n"
-        "  Use /ytdl followed by YouTube video URL.\n"
-        "  Example: `/ytdl https://youtu.be/xxx`\n\n"
-        "🖼 *YouTube Thumbnail*\n"
-        "  Use /ytthumb followed by YouTube video URL.\n"
-        "  Example: `/ytthumb https://youtu.be/xxx`\n\n"
-        "🔎 *YouTube Search*\n"
-        "  Use /ytsearch followed by your query.\n"
-        "  Example: `/ytsearch arijit singh`\n\n"
-        "🎶 *Saavn Song Search*\n"
-        "  Use /saavn followed by song name.\n"
-        "  Example: `/saavn tum hi ho`\n\n"
-        "📌 *Pinterest Image Search*\n"
-        "  Use /pinterest followed by your query.\n"
-        "  Example: `/pinterest nature wallpaper`\n\n"
-        "🎵 *TikTok Profile Lookup*\n"
-        "  Use /ttstalk followed by TikTok username.\n"
-        "  Example: `/ttstalk khaby.lame`\n\n"
-        "📸 *Instagram Profile Lookup (Detailed)*\n"
-        "  Use /igstalk followed by Instagram username.\n"
-        "  Example: `/igstalk instagram`\n\n"
-        "📱 *Telegram ID → Number*\n"
-        "  Use /tgnum followed by Telegram user ID.\n"
-        "  Example: `/tgnum 1234567890`\n\n"
-        "🇵🇰 *Pakistan SIM Info*\n"
-        "  Use /paknum followed by Pakistan mobile number.\n"
-        "  Example: `/paknum 03001234567`\n\n"
         "📋 *Available Commands*\n"
         "  /start       — Start the bot\n"
         "  /num         — Phone number lookup\n"
@@ -766,17 +722,8 @@ async def help_command(update, context):
         "  /pak         — Pakistan number lookup\n"
         "  /paknum      — Pakistan SIM info\n"
         "  /tgnum       — Telegram ID to number\n"
-        "  /tiktok      — TikTok video download\n"
-        "  /fbdl        — Facebook video download\n"
-        "  /igdl        — Instagram media download\n"
-        "  /ytdl        — YouTube video download\n"
-        "  /ytthumb     — YouTube thumbnail\n"
-        "  /ytsearch    — YouTube search\n"
-        "  /saavn       — Saavn song search\n"
-        "  /pinterest   — Pinterest image search\n"
-        "  /ttstalk     — TikTok profile lookup\n"
-        "  /igstalk     — Instagram profile lookup\n"
-        "  /info        — Your profile and usage stats\n"
+        "  /pan         — PAN card lookup\n"
+        "  /gstin       — GSTIN lookup\n"
         "  /report      — Report an issue to admin\n"
         "  /settings    — Show bot features\n"
         "  /back        — Back to main menu\n"
@@ -860,55 +807,6 @@ async def grouphelp_command(update, context):
     )
     await update.message.reply_text(text, parse_mode="Markdown")
 
-
-
-async def info_command(update, context):
-    """Any user: /info → own profile. Reply to msg → that person's info.
-    Admin: /info <user_id> → any user's info."""
-    if not await guard(update, context):
-        return
-    user_id = update.message.from_user.id
-    target_id = user_id
-
-    resolved_id, _, err = await resolve_target_id(update, context, context.args or [])
-    if resolved_id:
-        target_id = resolved_id
-    elif context.args or update.message.reply_to_message:
-        await update.message.reply_text(err or "❌ *Invalid input!*", parse_mode="Markdown")
-        return
-
-    row = get_user_info_db(target_id)
-    if not row:
-        await update.message.reply_text(
-            "❌ *User not found in database.*\n\nThis user has never used the bot.",
-            parse_mode="Markdown",
-        )
-        return
-
-    uid, first_name, username, join_date, search_count, banned, ban_reason, muted, mute_reason = row
-    uname_display = "@" + username if username else "N/A"
-
-    if banned:
-        status = "🚫 Banned"
-        if ban_reason:
-            status += "\n*Ban Reason:* `" + ban_reason + "`"
-    elif muted:
-        status = "🔇 Muted"
-        if mute_reason:
-            status += "\n*Mute Reason:* `" + mute_reason + "`"
-    else:
-        status = "✅ Active"
-
-    text = (
-        "👤 *User Info*\n\n"
-        "*Name:* `" + val(first_name) + "`\n"
-        "*Username:* " + uname_display + "\n"
-        "*User ID:* `" + str(uid) + "`\n"
-        "*Joined:* `" + val(join_date) + "`\n"
-        "*Total Searches:* `" + str(search_count) + "`\n"
-        "*Status:* " + status
-    )
-    await update.message.reply_text(text, parse_mode="Markdown")
 
 
 async def stats_command(update, context):
@@ -1772,429 +1670,6 @@ async def familyinfo_lookup(update, context):
         await update.message.reply_text("\n".join(lines), parse_mode="Markdown")
 
 
-async def tiktok_dl(update, context):
-    if not await guard_with_cooldown(update, context):
-        return
-    if not context.args:
-        await update.message.reply_text("*Usage:* `/tiktok <url>`\n\nExample: `/tiktok https://vm.tiktok.com/xxx`", parse_mode="Markdown")
-        return
-    user_id = update.message.from_user.id
-    chat_id = update.message.chat_id
-    url = context.args[0].strip()
-    msg = await update.message.reply_text("⏳ Downloading TikTok video...")
-    try:
-        import urllib.parse
-        data = await fetch_json(WA_TIKTOK_DL.format(url=urllib.parse.quote(url, safe="")), timeout=15)
-    except Exception as e:
-        await delete_msg(context, chat_id, msg.message_id)
-        await update.message.reply_text("*Server Error!* Please try again later.", parse_mode="Markdown")
-        return
-    await delete_msg(context, chat_id, msg.message_id)
-    if not isinstance(data, dict) or not data.get("success"):
-        await update.message.reply_text("*❌ Failed!* Could not download this TikTok video. Check the URL and try again.", parse_mode="Markdown")
-        return
-    video_url = data.get("video") or (data.get("medias") or [{}])[0].get("url") if data.get("medias") else None
-    title = data.get("title") or "TikTok Video"
-    if not video_url:
-        await update.message.reply_text("*❌ No video found!* The video link could not be extracted.", parse_mode="Markdown")
-        return
-    increment_search(user_id)
-    caption = "🎵 *TikTok Video*\n\n*Title:* " + (title[:100] if title else "N/A")
-    try:
-        await update.message.reply_video(video=video_url, caption=caption, parse_mode="Markdown")
-    except Exception:
-        await update.message.reply_text(caption + "\n\n🔗 *Link:* " + video_url, parse_mode="Markdown")
-
-
-async def facebook_dl(update, context):
-    if not await guard_with_cooldown(update, context):
-        return
-    if not context.args:
-        await update.message.reply_text("*Usage:* `/fbdl <url>`\n\nExample: `/fbdl https://fb.com/reel/xxx`", parse_mode="Markdown")
-        return
-    user_id = update.message.from_user.id
-    chat_id = update.message.chat_id
-    url = context.args[0].strip()
-    msg = await update.message.reply_text("⏳ Downloading Facebook video...")
-    try:
-        import urllib.parse
-        data = await fetch_json(WA_FB_DL.format(url=urllib.parse.quote(url, safe="")), timeout=15)
-    except Exception:
-        await delete_msg(context, chat_id, msg.message_id)
-        await update.message.reply_text("*Server Error!* Please try again later.", parse_mode="Markdown")
-        return
-    await delete_msg(context, chat_id, msg.message_id)
-    if not isinstance(data, dict) or not data.get("success"):
-        await update.message.reply_text("*❌ Failed!* Could not download. Check the URL and try again.", parse_mode="Markdown")
-        return
-    medias = data.get("medias") or []
-    video_url = data.get("video")
-    if not video_url and medias:
-        video_url = medias[0].get("url")
-    title = data.get("title") or "Facebook Video"
-    if not video_url:
-        await update.message.reply_text("*❌ No video found!* Could not extract video link.", parse_mode="Markdown")
-        return
-    increment_search(user_id)
-    caption = "📘 *Facebook Video*\n\n*Title:* " + (title[:100] if title else "N/A")
-    try:
-        await update.message.reply_video(video=video_url, caption=caption, parse_mode="Markdown")
-    except Exception:
-        await update.message.reply_text(caption + "\n\n🔗 *Link:* " + video_url, parse_mode="Markdown")
-
-
-async def instagram_dl(update, context):
-    if not await guard_with_cooldown(update, context):
-        return
-    if not context.args:
-        await update.message.reply_text("*Usage:* `/igdl <url>`\n\nExample: `/igdl https://www.instagram.com/reel/xxx`", parse_mode="Markdown")
-        return
-    user_id = update.message.from_user.id
-    chat_id = update.message.chat_id
-    url = context.args[0].strip()
-    msg = await update.message.reply_text("⏳ Downloading Instagram media...")
-    try:
-        import urllib.parse
-        data = await fetch_json(WA_IG_DL.format(url=urllib.parse.quote(url, safe="")), timeout=15)
-    except Exception:
-        await delete_msg(context, chat_id, msg.message_id)
-        await update.message.reply_text("*Server Error!* Please try again later.", parse_mode="Markdown")
-        return
-    await delete_msg(context, chat_id, msg.message_id)
-    if not isinstance(data, dict) or not data.get("success"):
-        await update.message.reply_text("*❌ Failed!* Could not download. Check the URL and try again.", parse_mode="Markdown")
-        return
-    medias = data.get("medias") or []
-    video_url = data.get("video")
-    if not video_url and medias:
-        video_url = medias[0].get("url")
-    title = data.get("title") or "Instagram Media"
-    if not video_url:
-        await update.message.reply_text("*❌ No media found!* Could not extract media link.", parse_mode="Markdown")
-        return
-    increment_search(user_id)
-    caption = "📸 *Instagram Media*\n\n*Title:* " + (title[:100] if title else "N/A")
-    try:
-        await update.message.reply_video(video=video_url, caption=caption, parse_mode="Markdown")
-    except Exception:
-        try:
-            await update.message.reply_photo(photo=video_url, caption=caption, parse_mode="Markdown")
-        except Exception:
-            await update.message.reply_text(caption + "\n\n🔗 *Link:* " + video_url, parse_mode="Markdown")
-
-
-async def ttstalk(update, context):
-    if not await guard_with_cooldown(update, context):
-        return
-    if not context.args:
-        await update.message.reply_text("*Usage:* `/ttstalk <username>`\n\nExample: `/ttstalk khaby.lame`", parse_mode="Markdown")
-        return
-    user_id = update.message.from_user.id
-    chat_id = update.message.chat_id
-    username = context.args[0].strip().lstrip("@")
-    msg = await update.message.reply_text("🔍 Searching TikTok profile...")
-    try:
-        data = await fetch_json(WA_TTSTALK.format(username=username), timeout=12)
-    except Exception:
-        await delete_msg(context, chat_id, msg.message_id)
-        await update.message.reply_text("*Server Error!* Please try again later.", parse_mode="Markdown")
-        return
-    await delete_msg(context, chat_id, msg.message_id)
-    if not isinstance(data, dict) or data.get("error") or not data.get("success", True):
-        await update.message.reply_text("*❌ Not Found!* No TikTok profile found for this username.", parse_mode="Markdown")
-        return
-    user_data = data.get("user") or data.get("data") or data
-    stats = data.get("stats") or user_data.get("stats") or {}
-    def tv(v): return str(v) if v not in (None, "", False) else "N/A"
-    def fmt(n):
-        try:
-            n = int(n)
-            if n >= 1_000_000: return str(round(n/1_000_000, 1)) + "M"
-            if n >= 1_000: return str(round(n/1_000, 1)) + "K"
-            return str(n)
-        except: return str(n)
-    increment_search(user_id)
-    text = (
-        "🎵 *TikTok Profile*\n\n"
-        "*Username:* `@" + tv(user_data.get("uniqueId") or user_data.get("username") or username) + "`\n"
-        "*Name:* `" + tv(user_data.get("nickname") or user_data.get("name")) + "`\n"
-        "*User ID:* `" + tv(user_data.get("id") or user_data.get("user_id")) + "`\n"
-        "*Bio:* " + tv(user_data.get("signature") or user_data.get("bio")) + "\n"
-        "*Verified:* `" + ("✅ Yes" if user_data.get("verified") else "❌ No") + "`\n"
-        "*Private:* `" + ("🔒 Yes" if user_data.get("privateAccount") else "🌐 No") + "`\n\n"
-        "📊 *Stats*\n"
-        "*Followers:* `" + fmt(stats.get("followerCount") or stats.get("followers", 0)) + "`\n"
-        "*Following:* `" + fmt(stats.get("followingCount") or stats.get("following", 0)) + "`\n"
-        "*Likes:* `" + fmt(stats.get("heartCount") or stats.get("likes", 0)) + "`\n"
-        "*Videos:* `" + fmt(stats.get("videoCount") or stats.get("videos", 0)) + "`"
-    )
-    await update.message.reply_text(text, parse_mode="Markdown")
-
-
-async def igstalk(update, context):
-    if not await guard_with_cooldown(update, context):
-        return
-    if not context.args:
-        await update.message.reply_text("*Usage:* `/igstalk <username>`\n\nExample: `/igstalk instagram`", parse_mode="Markdown")
-        return
-    user_id = update.message.from_user.id
-    chat_id = update.message.chat_id
-    username = context.args[0].strip().lstrip("@")
-    msg = await update.message.reply_text("🔍 Searching Instagram profile...")
-    try:
-        data = await fetch_json(WA_IGSTALK.format(username=username), timeout=12)
-    except Exception:
-        await delete_msg(context, chat_id, msg.message_id)
-        await update.message.reply_text("*Server Error!* Please try again later.", parse_mode="Markdown")
-        return
-    await delete_msg(context, chat_id, msg.message_id)
-    if not isinstance(data, dict) or data.get("error") or not data.get("success", True):
-        await update.message.reply_text("*❌ Not Found!* No Instagram profile found for this username.", parse_mode="Markdown")
-        return
-    profile = data.get("data") or data.get("user") or data
-    def iv(v): return str(v) if v not in (None, "") else "N/A"
-    def fmt(n):
-        try:
-            n = int(n)
-            if n >= 1_000_000: return str(round(n/1_000_000, 1)) + "M"
-            if n >= 1_000: return str(round(n/1_000, 1)) + "K"
-            return str(n)
-        except: return str(n)
-    increment_search(user_id)
-    verified = "✅ Yes" if profile.get("is_verified") else "❌ No"
-    private = "🔒 Private" if profile.get("is_private") else "🌐 Public"
-    bio = str(profile.get("biography") or profile.get("bio") or "N/A").replace("_", "\\_").replace("*", "\\*")
-    text = (
-        "📸 *Instagram Profile*\n\n"
-        "*Username:* `@" + iv(profile.get("username")) + "`\n"
-        "*Full Name:* `" + iv(profile.get("full_name") or profile.get("name")) + "`\n"
-        "*User ID:* `" + iv(profile.get("id") or profile.get("user_id")) + "`\n"
-        "*Followers:* `" + fmt(profile.get("followers") or profile.get("follower_count", 0)) + "`\n"
-        "*Following:* `" + fmt(profile.get("following") or profile.get("following_count", 0)) + "`\n"
-        "*Posts:* `" + iv(profile.get("posts") or profile.get("media_count")) + "`\n"
-        "*Verified:* " + verified + "\n"
-        "*Account:* " + private + "\n"
-        "*Bio:* " + bio
-    )
-    await update.message.reply_text(text, parse_mode="Markdown")
-
-
-async def youtube_dl(update, context):
-    if not await guard_with_cooldown(update, context):
-        return
-    if not context.args:
-        await update.message.reply_text("*Usage:* `/ytdl <url>`\n\nExample: `/ytdl https://youtu.be/xxx`", parse_mode="Markdown")
-        return
-    user_id = update.message.from_user.id
-    chat_id = update.message.chat_id
-    url = context.args[0].strip()
-    msg = await update.message.reply_text("⏳ Fetching YouTube video info...")
-    try:
-        import urllib.parse
-        data = await fetch_json(WA_YT_DL.format(url=urllib.parse.quote(url, safe="")), timeout=20)
-    except Exception:
-        await delete_msg(context, chat_id, msg.message_id)
-        await update.message.reply_text("*Server Error!* Please try again later.", parse_mode="Markdown")
-        return
-    await delete_msg(context, chat_id, msg.message_id)
-    if not isinstance(data, dict) or not data.get("success", data.get("status") == "success"):
-        await update.message.reply_text("*❌ Failed!* Could not fetch this YouTube video. Check the URL.", parse_mode="Markdown")
-        return
-    increment_search(user_id)
-    title = data.get("title") or "YouTube Video"
-    thumbnail = data.get("thumbnail") or ""
-    duration = data.get("duration") or "N/A"
-    formats = data.get("formats") or data.get("qualities") or []
-    video_url = data.get("video") or data.get("url") or ""
-    text = (
-        "▶️ *YouTube Video*\n\n"
-        "*Title:* " + title[:150] + "\n"
-        "*Duration:* `" + str(duration) + "`\n"
-    )
-    if formats:
-        text += "\n*Available Qualities:*\n"
-        for f in formats[:5]:
-            label = f.get("quality") or f.get("format") or f.get("label") or "unknown"
-            link = f.get("url") or f.get("link") or ""
-            if link:
-                text += "• [" + str(label) + "](" + link + ")\n"
-    elif video_url:
-        text += "\n🔗 [Download Video](" + video_url + ")"
-    await update.message.reply_text(text, parse_mode="Markdown", disable_web_page_preview=False)
-
-
-async def pinterest_search(update, context):
-    if not await guard_with_cooldown(update, context):
-        return
-    if not context.args:
-        await update.message.reply_text("*Usage:* `/pinterest <query>`\n\nExample: `/pinterest nature wallpaper`", parse_mode="Markdown")
-        return
-    user_id = update.message.from_user.id
-    chat_id = update.message.chat_id
-    query = " ".join(context.args).strip()
-    msg = await update.message.reply_text("🔍 Searching Pinterest...")
-    try:
-        import urllib.parse
-        data = await fetch_json(WA_PINTEREST.format(query=urllib.parse.quote(query)), timeout=12)
-    except Exception:
-        await delete_msg(context, chat_id, msg.message_id)
-        await update.message.reply_text("*Server Error!* Please try again later.", parse_mode="Markdown")
-        return
-    await delete_msg(context, chat_id, msg.message_id)
-    if not isinstance(data, dict) or data.get("status") != "success":
-        await update.message.reply_text("*❌ No Results!* Nothing found for this query.", parse_mode="Markdown")
-        return
-    images = data.get("images") or []
-    if not images:
-        await update.message.reply_text("*❌ No Images Found!*", parse_mode="Markdown")
-        return
-    increment_search(user_id)
-    from telegram import InputMediaPhoto
-    media_group = []
-    for img_url in images[:9]:
-        try:
-            media_group.append(InputMediaPhoto(media=img_url))
-        except Exception:
-            pass
-    caption = "📌 *Pinterest Results*\n\n*Query:* `" + query + "`\n*Total Found:* `" + str(data.get("total", len(images))) + "`"
-    if media_group:
-        try:
-            media_group[0] = InputMediaPhoto(media=media_group[0].media, caption=caption, parse_mode="Markdown")
-            await update.message.reply_media_group(media=media_group)
-        except Exception:
-            await update.message.reply_text(caption + "\n\n🔗 " + images[0], parse_mode="Markdown")
-    else:
-        await update.message.reply_text(caption, parse_mode="Markdown")
-
-
-async def yt_thumbnail(update, context):
-    if not await guard_with_cooldown(update, context):
-        return
-    if not context.args:
-        await update.message.reply_text("*Usage:* `/ytthumb <url>`\n\nExample: `/ytthumb https://youtu.be/xxx`", parse_mode="Markdown")
-        return
-    user_id = update.message.from_user.id
-    chat_id = update.message.chat_id
-    url = context.args[0].strip()
-    msg = await update.message.reply_text("🔍 Fetching thumbnail...")
-    try:
-        import urllib.parse
-        data = await fetch_json(WA_YT_THUMB.format(url=urllib.parse.quote(url, safe="")), timeout=12)
-    except Exception:
-        await delete_msg(context, chat_id, msg.message_id)
-        await update.message.reply_text("*Server Error!* Please try again later.", parse_mode="Markdown")
-        return
-    await delete_msg(context, chat_id, msg.message_id)
-    if not isinstance(data, dict) or str(data.get("status", data.get("code", ""))).lower() not in ("success", "200"):
-        await update.message.reply_text("*❌ Failed!* Could not fetch thumbnail. Check the URL.", parse_mode="Markdown")
-        return
-    increment_search(user_id)
-    thumb = data.get("thumbnail", {})
-    maxres = (data.get("thumbnails", {}).get("high", {}) or {}).get("maxres") or thumb.get("url") or ""
-    title = data.get("title") or "YouTube Video"
-    caption = (
-        "🖼 *YouTube Thumbnail*\n\n"
-        "*Title:* " + title[:150] + "\n"
-        "*Resolution:* `" + str(thumb.get("width", "")) + "x" + str(thumb.get("height", "")) + "`"
-    )
-    if maxres:
-        try:
-            await update.message.reply_photo(photo=maxres, caption=caption, parse_mode="Markdown")
-        except Exception:
-            await update.message.reply_text(caption + "\n\n🔗 " + maxres, parse_mode="Markdown")
-    else:
-        await update.message.reply_text("*❌ No thumbnail found!*", parse_mode="Markdown")
-
-
-async def yt_search(update, context):
-    if not await guard_with_cooldown(update, context):
-        return
-    if not context.args:
-        await update.message.reply_text("*Usage:* `/ytsearch <query>`\n\nExample: `/ytsearch arijit singh`", parse_mode="Markdown")
-        return
-    user_id = update.message.from_user.id
-    chat_id = update.message.chat_id
-    query = " ".join(context.args).strip()
-    msg = await update.message.reply_text("🔍 Searching YouTube...")
-    try:
-        import urllib.parse
-        data = await fetch_json(WA_YT_SEARCH.format(query=urllib.parse.quote(query)), timeout=12)
-    except Exception:
-        await delete_msg(context, chat_id, msg.message_id)
-        await update.message.reply_text("*Server Error!* Please try again later.", parse_mode="Markdown")
-        return
-    await delete_msg(context, chat_id, msg.message_id)
-    if not isinstance(data, dict) or data.get("status") != "success":
-        await update.message.reply_text("*❌ No Results!* Nothing found for this query.", parse_mode="Markdown")
-        return
-    results = data.get("results") or []
-    if not results:
-        await update.message.reply_text("*❌ No Results Found!*", parse_mode="Markdown")
-        return
-    increment_search(user_id)
-    lines = ["▶️ *YouTube Search Results*\n\n*Query:* `" + query + "`\n"]
-    for i, r in enumerate(results[:5], 1):
-        title = (r.get("title") or "N/A")[:80]
-        channel = r.get("channel") or "N/A"
-        url = r.get("url") or ""
-        lines.append(str(i) + ". [" + title + "](" + url + ")\n   📺 `" + channel + "`\n")
-    await update.message.reply_text("\n".join(lines), parse_mode="Markdown", disable_web_page_preview=True)
-
-
-async def saavn_search(update, context):
-    if not await guard_with_cooldown(update, context):
-        return
-    if not context.args:
-        await update.message.reply_text("*Usage:* `/saavn <song name>`\n\nExample: `/saavn tum hi ho`", parse_mode="Markdown")
-        return
-    user_id = update.message.from_user.id
-    chat_id = update.message.chat_id
-    query = " ".join(context.args).strip()
-    msg = await update.message.reply_text("🔍 Searching Saavn...")
-    try:
-        import urllib.parse
-        data = await fetch_json(WA_SAAVN.format(query=urllib.parse.quote(query)), timeout=12)
-    except Exception:
-        await delete_msg(context, chat_id, msg.message_id)
-        await update.message.reply_text("*Server Error!* Please try again later.", parse_mode="Markdown")
-        return
-    await delete_msg(context, chat_id, msg.message_id)
-    if not isinstance(data, dict) or data.get("status") != "success":
-        await update.message.reply_text("*❌ No Results!* Song not found.", parse_mode="Markdown")
-        return
-    results = data.get("results") or []
-    if not results:
-        await update.message.reply_text("*❌ No Songs Found!*", parse_mode="Markdown")
-        return
-    increment_search(user_id)
-    song = results[0]
-    downloads = song.get("download") or {}
-    best_link = downloads.get("320kbps") or downloads.get("160kbps") or downloads.get("96kbps") or downloads.get("48kbps") or downloads.get("12kbps") or ""
-    def fmt_dur(s):
-        try:
-            s = int(str(s).replace("s", ""))
-            return str(s // 60) + ":" + str(s % 60).zfill(2)
-        except: return str(s)
-    text = (
-        "🎵 *Saavn Song Result*\n\n"
-        "*Title:* `" + (song.get("title") or "N/A") + "`\n"
-        "*Artist:* `" + (song.get("artist") or "N/A") + "`\n"
-        "*Album:* `" + (song.get("album") or "N/A") + "`\n"
-        "*Year:* `" + str(song.get("year") or "N/A") + "`\n"
-        "*Duration:* `" + fmt_dur(song.get("duration") or 0) + "`\n"
-        "*Language:* `" + (song.get("language") or "N/A").title() + "`\n"
-    )
-    if best_link:
-        text += "\n🎧 *Best Quality Download:*\n" + best_link
-    all_links = []
-    for quality, link in downloads.items():
-        if link:
-            all_links.append("• [" + quality + "](" + link + ")")
-    if all_links:
-        text += "\n\n📥 *All Qualities:*\n" + "\n".join(all_links)
-    await update.message.reply_text(text, parse_mode="Markdown", disable_web_page_preview=True)
-
-
 async def tgnum_lookup(update, context):
     if not await guard_with_cooldown(update, context):
         return
@@ -2202,31 +1677,33 @@ async def tgnum_lookup(update, context):
         await update.message.reply_text("*Usage:* `/tgnum <user_id>`\n\nExample: `/tgnum 1234567890`", parse_mode="Markdown")
         return
     user_id = update.message.from_user.id
-    chat_id = update.message.chat_id
-    userid = context.args[0].strip().lstrip("@")
-    msg = await update.message.reply_text("🔍 Looking up Telegram number...")
+    userid = context.args[0].strip()
+    if not userid.lstrip("-").isdigit():
+        await update.message.reply_text("❌ *Invalid User ID!*\n\nPlease provide a numeric Telegram user ID.", parse_mode="Markdown")
+        return
+    msg = await update.message.reply_text("⏳ Looking up Telegram ID...")
     try:
-        data = await fetch_json(WA_TG_NUM.format(userid=userid), timeout=12)
+        data = await fetch_json(WA_TG_NUM.format(userid=userid), timeout=15)
     except Exception:
-        await delete_msg(context, chat_id, msg.message_id)
-        await update.message.reply_text("*Server Error!* Please try again later.", parse_mode="Markdown")
+        await msg.edit_text("❌ *Request failed.* API is not responding.", parse_mode="Markdown")
         return
-    await delete_msg(context, chat_id, msg.message_id)
-    if not isinstance(data, dict) or not data.get("success"):
-        await update.message.reply_text("*❌ Not Found!* No phone number linked to this Telegram ID.", parse_mode="Markdown")
+    if not data or not data.get("success"):
+        err = data.get("message") or data.get("error") or "No data found."
+        await msg.edit_text("❌ *Not Found!*\n\n" + str(err), parse_mode="Markdown")
         return
-    increment_search(user_id)
-    phone = data.get("phone") or data.get("number") or data.get("mobile") or "N/A"
-    name = data.get("name") or data.get("first_name") or "N/A"
-    username = data.get("username") or "N/A"
+    def pv(v):
+        if v in (None, "", "null", "NULL", "N/A"): return "None"
+        return str(v)
+    result = data.get("result") or data.get("data") or data
     text = (
-        "📱 *Telegram ID → Number*\n\n"
-        "*User ID:* `" + str(userid) + "`\n"
-        "*Name:* `" + str(name) + "`\n"
-        "*Username:* `" + ("@" + str(username) if username != "N/A" else "N/A") + "`\n"
-        "*Phone:* `" + str(phone) + "`"
+        "📱 *Telegram ID Lookup*\n\n"
+        "*User ID:* `" + pv(userid) + "`\n"
+        "*Phone:* `" + pv(result.get("phone") or result.get("number") or result.get("mobile")) + "`\n"
+        "*Name:* `" + pv(result.get("name") or result.get("first_name")) + "`\n"
+        "*Username:* `" + pv(result.get("username")) + "`"
     )
-    await update.message.reply_text(text, parse_mode="Markdown")
+    increment_search(user_id)
+    await msg.edit_text(text, parse_mode="Markdown")
 
 
 async def paknum_lookup(update, context):
@@ -2236,34 +1713,120 @@ async def paknum_lookup(update, context):
         await update.message.reply_text("*Usage:* `/paknum <number>`\n\nExample: `/paknum 03001234567`", parse_mode="Markdown")
         return
     user_id = update.message.from_user.id
-    chat_id = update.message.chat_id
-    number = context.args[0].replace("+", "").replace(" ", "").replace("-", "")
-    msg = await update.message.reply_text("🔍 Searching Pakistan SIM info...")
+    raw_num = context.args[0].strip()
+    if raw_num.startswith("03") and len(raw_num) == 11:
+        number = "92" + raw_num[1:]
+    elif raw_num.startswith("+92"):
+        number = raw_num[1:]
+    else:
+        number = raw_num
+    msg = await update.message.reply_text("⏳ Looking up SIM info...")
     try:
-        data = await fetch_json(WA_SIM_INFO.format(number=number), timeout=12)
+        data = await fetch_json(WA_SIM_INFO.format(number=number), timeout=15)
     except Exception:
-        await delete_msg(context, chat_id, msg.message_id)
-        await update.message.reply_text("*Server Error!* Please try again later.", parse_mode="Markdown")
+        await msg.edit_text("❌ *Request failed.* API is not responding.", parse_mode="Markdown")
         return
-    await delete_msg(context, chat_id, msg.message_id)
-    if not isinstance(data, dict) or not data.get("success"):
-        msg_txt = data.get("message") or "No data found for this number." if isinstance(data, dict) else "No data found."
-        await update.message.reply_text("*❌ Not Found!* " + str(msg_txt), parse_mode="Markdown")
+    if not data or not data.get("success"):
+        err = data.get("message") or data.get("error") or "No data found."
+        await msg.edit_text("❌ *Not Found!*\n\n" + str(err), parse_mode="Markdown")
+        return
+    records = data.get("records") or data.get("data") or data.get("result") or []
+    if isinstance(records, dict):
+        records = [records]
+    if not records:
+        await msg.edit_text("*❌ Not Found!*\n\nNo data found for this number.", parse_mode="Markdown")
         return
     increment_search(user_id)
-    result = data.get("data") or data.get("result") or data
-    def pv(v): return str(v) if v not in (None, "", "null", "N/A") else "None"
+    def pv(v):
+        if v in (None, "", "null", "NULL", "N/A"): return "None"
+        return str(v)
+    await msg.delete()
+    for i, record in enumerate(records, 1):
+        text = (
+            "🇵🇰 *Pakistan SIM Info*"
+            + (" — *" + str(i) + "/" + str(len(records)) + "*" if len(records) > 1 else "") + "\n\n"
+            "*Number:* `" + (record.get("mobile") or raw_num) + "`\n"
+            "*Name:* `" + pv(record.get("name") or record.get("NAME")) + "`\n"
+            "*CNIC:* `" + pv(record.get("cnic") or record.get("CNIC") or record.get("id")) + "`\n"
+            "*Network:* `" + pv(record.get("network") or record.get("operator")) + "`\n"
+            "*Address:* `" + pv(record.get("address") or record.get("ADDRESS")) + "`\n"
+            "*City:* `" + pv(record.get("city") or record.get("district")) + "`\n"
+            "*Province:* `" + pv(record.get("province") or record.get("state")) + "`"
+        )
+        await update.message.reply_text(text, parse_mode="Markdown")
+
+
+async def pan_lookup(update, context):
+    if not await guard_with_cooldown(update, context):
+        return
+    if not context.args:
+        await update.message.reply_text("*Usage:* `/pan <PAN>`\n\nExample: `/pan AAYFK4129N`", parse_mode="Markdown")
+        return
+    user_id = update.message.from_user.id
+    pan = context.args[0].strip().upper()
+    msg = await update.message.reply_text("⏳ Looking up PAN details...")
+    try:
+        data = await fetch_json(PAN_API.format(pan=pan), timeout=15)
+    except Exception:
+        await msg.edit_text("❌ *Request failed.* API is not responding.", parse_mode="Markdown")
+        return
+    if not data or data.get("status") == "error" or not data.get("data"):
+        err = data.get("message") or data.get("error") or "No data found."
+        await msg.edit_text("❌ *Not Found!*\n\n" + str(err), parse_mode="Markdown")
+        return
+    def pv(v):
+        if v in (None, "", "null", "NULL", "N/A", "NA"): return "None"
+        return str(v)
+    d = data.get("data") or data
     text = (
-        "🇵🇰 *Pakistan SIM Info*\n\n"
-        "*Number:* `" + number + "`\n"
-        "*Name:* `" + pv(result.get("name") or result.get("NAME")) + "`\n"
-        "*CNIC:* `" + pv(result.get("cnic") or result.get("CNIC") or result.get("id")) + "`\n"
-        "*Address:* `" + pv(result.get("address") or result.get("ADDRESS")) + "`\n"
-        "*Operator:* `" + pv(result.get("operator") or result.get("network") or result.get("circle")) + "`\n"
-        "*City:* `" + pv(result.get("city") or result.get("district")) + "`\n"
-        "*Province:* `" + pv(result.get("province") or result.get("state")) + "`"
+        "🪪 *PAN Card Info*\n\n"
+        "*PAN:* `" + pv(d.get("pan") or pan) + "`\n"
+        "*Name:* `" + pv(d.get("name") or d.get("full_name") or d.get("firstName", "") + " " + d.get("lastName", "")) + "`\n"
+        "*Type:* `" + pv(d.get("pan_type") or d.get("type") or d.get("category")) + "`\n"
+        "*Status:* `" + pv(d.get("status") or d.get("pan_status")) + "`\n"
+        "*Last Updated:* `" + pv(d.get("last_updated") or d.get("lastUpdated") or d.get("date")) + "`"
     )
-    await update.message.reply_text(text, parse_mode="Markdown")
+    increment_search(user_id)
+    await msg.edit_text(text, parse_mode="Markdown")
+
+
+async def gstin_lookup(update, context):
+    if not await guard_with_cooldown(update, context):
+        return
+    if not context.args:
+        await update.message.reply_text("*Usage:* `/gstin <GSTIN>`\n\nExample: `/gstin 09AAYFK4129N1ZF`", parse_mode="Markdown")
+        return
+    user_id = update.message.from_user.id
+    gstin = context.args[0].strip().upper()
+    msg = await update.message.reply_text("⏳ Looking up GSTIN details...")
+    try:
+        data = await fetch_json(GSTIN_API.format(gstin=gstin), timeout=15)
+    except Exception:
+        await msg.edit_text("❌ *Request failed.* API is not responding.", parse_mode="Markdown")
+        return
+    if not data or data.get("status") == "error" or not data.get("data"):
+        err = data.get("message") or data.get("error") or "No data found."
+        await msg.edit_text("❌ *Not Found!*\n\n" + str(err), parse_mode="Markdown")
+        return
+    def pv(v):
+        if v in (None, "", "null", "NULL", "N/A", "NA"): return "None"
+        return str(v)
+    d = data.get("data") or data
+    addr = d.get("address") or d.get("principalPlaceOfBusiness") or d.get("pradr") or {}
+    addr_str = pv(addr.get("adr") or addr.get("address") or addr) if isinstance(addr, dict) else pv(addr)
+    text = (
+        "🏢 *GSTIN Info*\n\n"
+        "*GSTIN:* `" + pv(d.get("gstin") or gstin) + "`\n"
+        "*Trade Name:* `" + pv(d.get("trade_name") or d.get("tradeName") or d.get("tradeNam")) + "`\n"
+        "*Legal Name:* `" + pv(d.get("legal_name") or d.get("legalName") or d.get("lgnm")) + "`\n"
+        "*Status:* `" + pv(d.get("status") or d.get("sts")) + "`\n"
+        "*Type:* `" + pv(d.get("taxpayer_type") or d.get("taxpayerType") or d.get("dty")) + "`\n"
+        "*State:* `" + pv(d.get("state") or d.get("stj")) + "`\n"
+        "*Registration Date:* `" + pv(d.get("registration_date") or d.get("rgdt")) + "`\n"
+        "*Address:* `" + addr_str + "`"
+    )
+    increment_search(user_id)
+    await msg.edit_text(text, parse_mode="Markdown")
 
 
 if __name__ == "__main__":
@@ -2275,7 +1838,6 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("num", num_lookup))
     app.add_handler(CommandHandler("aadhar", aadhar_lookup))
     app.add_handler(CommandHandler("veh", veh_lookup))
-    app.add_handler(CommandHandler("info", info_command))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("grouphelp", grouphelp_command))
     app.add_handler(CommandHandler("settings", settings_command))
@@ -2290,18 +1852,10 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("pak", pak_lookup))
     app.add_handler(CommandHandler("ip", ip_lookup))
     app.add_handler(CommandHandler("familyinfo", familyinfo_lookup))
-    app.add_handler(CommandHandler("tiktok", tiktok_dl))
-    app.add_handler(CommandHandler("fbdl", facebook_dl))
-    app.add_handler(CommandHandler("igdl", instagram_dl))
-    app.add_handler(CommandHandler("ttstalk", ttstalk))
-    app.add_handler(CommandHandler("igstalk", igstalk))
-    app.add_handler(CommandHandler("ytdl", youtube_dl))
-    app.add_handler(CommandHandler("pinterest", pinterest_search))
-    app.add_handler(CommandHandler("ytthumb", yt_thumbnail))
-    app.add_handler(CommandHandler("ytsearch", yt_search))
-    app.add_handler(CommandHandler("saavn", saavn_search))
     app.add_handler(CommandHandler("tgnum", tgnum_lookup))
     app.add_handler(CommandHandler("paknum", paknum_lookup))
+    app.add_handler(CommandHandler("pan", pan_lookup))
+    app.add_handler(CommandHandler("gstin", gstin_lookup))
     app.add_handler(CommandHandler("adminhelp", adminhelp_command))
     app.add_handler(CommandHandler("maintenance", maintenance_command))
     app.add_handler(CallbackQueryHandler(check_joined_callback, pattern="check_joined"))
